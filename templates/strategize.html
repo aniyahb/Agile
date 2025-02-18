@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>ELDP Agile Simulation Game Strategize</title>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="round-number">
+                <h1>Round {{ current_round }}</h1>
+            </div>
+        </div>
+    </header>
+
+    <div class="timer-container">
+        <div class="timer">
+            <h2>Strategize Time</h2>
+            <div id="timer-display">0:00</div>
+        </div>
+
+        <div id="next-round-button-container">
+            <button id="next-round-button">Next Round</button>
+            <button id="clear-data-button">Clear Data</button>
+        </div>
+
+        <div id="rounds-container">
+            {% for round_data in allRoundsData %}
+            <div class="round-data {% if round_data.round > current_round %}hidden{% endif %}" id="round-{{ round_data.round }}">
+                <h3 id="round-{{ round_data.round }}-display">Round {{ round_data.round }}</h3>
+                <div>Plan: <span id="round-{{ round_data.round }}-plan">{{ round_data.plan }}</span></div>
+                <div>Total: <span id="round-{{ round_data.round }}-total">{{ round_data.total }}</span></div>
+                <div>Defects: <span id="round-{{ round_data.round }}-defects">{{ round_data.defects }}</span></div>
+                <div>Actual: <span id="round-{{ round_data.round }}-actual">{{ round_data.total - round_data.defects }}</span></div>
+                <div>Delta: <span id="round-{{ round_data.round }}-delta">{{ (round_data.total - round_data.defects) - round_data.plan }}</span></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <footer>
+        <img src="https://images.squarespace-cdn.com/content/v1/5d39c2fb4c1e5c0001790e6a/1571947140718-NPG89HWJFF5PM2B3WHU5/PSU_COE_Logo.png?format=1500w" alt="PennState College of Engineering">
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            let time = 5; // 60 seconds countdown
+            let timer = setInterval(() => {
+                let minutes = parseInt(time / 60, 10);
+                let seconds = (time % 60).toString().padStart(2, "0");
+                document.getElementById("timer-display").textContent = `${minutes}:${seconds}`;
+
+                time--;
+                if (time < 0) {
+                    clearInterval(timer);
+                    alert("Time is up!");
+                    document.getElementById('next-round-button-container').style.display = 'block';
+                }
+            }, 1000);
+
+            document.getElementById('next-round-button').addEventListener('click', () => {
+                const planValue = localStorage.getItem("lastPlan") || "50"; // Retrieve stored plan
+                fetch('/next_round', {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ "plan_value": planValue })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("DEBUG: Next round response", data);
+                    window.location.href = '/plan';
+                })
+                .catch(error => console.error("DEBUG: Fetch error", error));
+            });
+
+            document.getElementById('clear-data-button').addEventListener('click', () => {
+                fetch('/clear_data', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        window.location.href = '/plan';
+                    });
+            });
+        });
+    </script>
+</body>
+</html>

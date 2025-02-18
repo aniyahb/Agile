@@ -1,0 +1,372 @@
+/* Remove the spinner for WebKit browsers (Chrome, Edge, Safari) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Remove spinner buttons for Firefox */
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* body, html {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;  
+    overflow: hidden; 
+} */
+
+body{
+    display: flex;
+    flex-direction: column;
+    font-size: 25px;
+    margin: 20px;
+    /* min-height: 100vh; */
+    font-family: Arial, sans-serif;
+    /* overflow: hidden; */
+}
+
+/* * {
+    box-sizing: border-box;
+} */
+
+header {
+    width: 100%;
+    background-color: #1E407D;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.header-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.round-number h1{
+    font-size: 2em;
+    font-weight: bold;
+}
+
+
+/*Plan Page*/
+.plan-container{
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    text-align: center;
+    padding: 2rem;
+    margin-top: 1.5em;
+    box-sizing: border-box;
+}
+
+.plan-heading h2 {
+    width: 100%;
+    font-size: 2em;
+    color: #1E407D;
+    margin-bottom: 1rem;
+}
+
+.plan-input input[type=number]{
+    padding: 12px;
+    outline: none;
+    border: 2px solid #97BEE7;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    margin: 1rem;
+    transition: border-color 0.2s ease-in-out;
+}
+
+.plan-input input[type=number]:focus{
+    border-color: #1E407D;
+}
+
+.start-round-button-container{
+    display: flex;
+    justify-content: center;
+    column-gap: 3.5rem;
+    padding: 10px;
+}
+
+button{
+    border: none;
+    background-color: #97BEE7;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    padding: 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:active{
+    transform: translateY(3px);
+}
+
+#start-round{
+    background-color: #4a90e2;
+    color: white;
+}
+
+#start-round:hover{
+    background-color: #1E407D;
+}
+
+#clear-data-button{
+    background-color: #4a90e2;
+    color: white;
+}
+
+#clear-data-button:hover{
+    background-color: #1E407D;
+}
+
+
+/*Timer Page*/
+.timer-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    padding: 2rem;
+    margin: 1rem auto;
+    margin-top: 1.5em;
+}
+
+.timer-heading h2{
+    text-align: center;
+    width: 100%;
+    font-size: 2em;
+    font-weight: bold;
+    color: #1E407D;
+}
+
+#defects{
+    text-align: center;
+    width: 100%;
+}
+
+#defects h2{
+    text-align: center;
+    width: 100%;
+    font-size: 2em;
+    font-weight: bold;
+    color: #1E407D;
+}
+
+#defects-input{
+    width: 100%;
+    padding: 12px;
+    outline: none;
+    border: 2px solid #97BEE7;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    margin: 1rem;
+    transition: border-color 0.2s ease-in-out;
+}
+
+#defects-input:focus{
+    border-color: #1E407D;
+}
+
+#calculate-button-container{
+    display: flex;
+    justify-content: center;
+    column-gap: 3.5rem;
+    padding: 10px;
+}
+
+#calculate-button{
+    background-color: #4a90e2;
+    color: white;
+}
+
+#calculate-button:hover{
+    background-color: #1E407D;
+}
+
+
+/*Metric Page*/
+.metric-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 3rem;
+    /* padding: 2rem; */
+    /* background: #f2f2f2; */
+}
+
+#metric-display{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    width: 100%;
+    margin-bottom: 2rem;
+    
+}
+
+#metric-display div{
+    width: 50%;
+    background-color: #f0f0f0;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    margin: 1rem auto;
+    font-size: 1.5rem;
+    transition: background-color 0.3s ease;
+}
+
+#metric-display div:hover{
+    background-color: #d4d4d4;
+}
+
+#strategize-button{
+    background-color: #4a90e2;
+    color: white;
+}
+
+#strategize-button:hover{
+    background-color: #1E407D;
+}
+
+
+/*Strategize Page*/
+.timer h2{
+    text-align: center;
+    width: 100%;
+    font-size: 2em;
+    font-weight: bold;
+    color: #1E407D;
+}
+
+#next-round-button-container{
+    display: flex;
+    justify-content: center;
+    /* column-gap: 3.5rem; */
+    /* padding: 10px; */
+}
+
+#next-round-button-container button{
+    margin: 0px 2rem;
+}
+
+#next-round-button{
+    background-color: #4a90e2;
+    color: white;
+}
+
+#next-round-button:hover{
+    background-color: #1E407D;
+}
+
+#rounds-container{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 2rem;
+    padding: 0 2rem;
+
+}
+
+.round-data{
+    flex: 1 1 calc(20% - 20px);
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    align-content: space-around;
+    border: 1px solid #ddd;
+    padding: 3rem;
+    box-sizing: border-box;
+    background-color: #f9f9f9;
+    font-size: 1.75rem;
+    margin: 0 2rem;
+} 
+
+.round-data h3{
+    color: #1E407D;
+}
+
+
+
+#timer-display{
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+    width: 100%;
+    border: 1px solid black;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+footer{
+    display: flex;
+    background-color: #f2f2f2;
+    padding: 20px;
+    align-items: flex-end;
+    justify-content: flex-start;
+    box-sizing: border-box;
+    /* position: fixed;
+    bottom: 0;
+    left: 0; */
+    width: 100%;
+    margin-top: auto;
+}
+
+footer img{
+    max-width: 550px; 
+    height: auto;
+    margin-left: 20px; 
+    align-self: flex-end;
+}
+
+
+#defects{
+    display: none;
+}
+
+
+
+
+
+#next-round-button-container{
+    display: none;
+}
+
+
+
+.round-data{
+    display: flex;
+    justify-content: space-around;
+    flex-direction: column;
+}
+
+
+.round-data h3{
+    display: flex;
+    justify-content: center;
+}
+
+
+.round-data div{
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    padding: 5px;
+    gap: 10px;
+}
+
+
+
+.hidden{
+    display: none;
+}

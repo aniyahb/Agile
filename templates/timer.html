@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELDP Agile Simulation Game Timer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Processing...</h1>
+    </header>
+
+    <div class="timer-container">
+        <h2>Timer:</h2>
+        <p id="timer">5</p> <!-- Countdown timer -->
+
+        <h2>Balls Processed:</h2>
+        <p id="ballsCounter">0</p> <!-- Live counter -->
+    </div>
+
+    <form id="next-round-form">
+        <input type="hidden" name="plan_value" id="hidden-plan-value">
+        <button type="button" id="next-button" style="display:none;">Next</button>
+    </form>
+
+    <script>
+        // Countdown timer functionality
+        let timerElement = document.getElementById('timer');
+        let nextButton = document.getElementById("next-button");
+        let timeLeft = 5; // Set timer duration
+
+        const countdown = setInterval(() => {
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                alert("Time's up! Proceed to Metrics.");
+                nextButton.style.display = "block"; // Show Next button
+            } else {
+                timerElement.textContent = timeLeft;
+                timeLeft--;
+            }
+        }, 1000); // Update every second
+
+        // Live counter updates using Server-Sent Events (SSE)
+        function startLiveUpdate() {
+            const eventSource = new EventSource("/live_counter");
+            eventSource.onmessage = function(event) {
+                document.getElementById("ballsCounter").innerText = event.data;
+            };
+        }
+        
+        // Start live updates when the page loads
+        window.onload = () => {
+            timerElement.textContent = 5; // Reset the timer
+            document.getElementById('ballsCounter').textContent = 0; // Reset counter
+            startLiveUpdate();
+        };
+
+        // Handle "Next" button click
+        document.getElementById("next-button").addEventListener("click", () => {
+            const planValue = localStorage.getItem("lastPlan") || "50"; // Retrieve stored plan
+            fetch("/update_round", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ "plan_value": planValue })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("DEBUG: Update round response", data);
+                window.location.href = "/metric";
+            })
+            .catch(error => console.error("DEBUG: Fetch error", error));
+        });
+    </script>
+</body>
+</html>
+
