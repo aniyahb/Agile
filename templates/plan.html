@@ -17,17 +17,21 @@
 
     <div class="plan-container">
         <div class="plan-heading">
-            <h2>Plan</h2>
+            <h2>Set Your Plan</h2>
         </div>
 
-        <form action="/timer" method="POST" id="plan-form">
-            <div class="plan-input">
-                <input type="number" name="plan_value" id="plan" placeholder="Enter your Plan" required>
-            </div>
-            <div class="start-round-button-container">
-                <button type="submit">Start Round</button>
-            </div>
-        </form>
+        <div class="plan-value">
+            <h2>Plan: <span id="plan-count">0</span></h2>
+        </div>
+
+        <div class="button-container">
+            <button onclick="updatePlan(1)">+1</button>
+            <button onclick="updatePlan(-1)">-1</button>
+            <button onclick="updatePlan(10)">+10</button>
+            <button onclick="updatePlan(-10)">-10</button>
+        </div>
+
+        <button id="confirm-button">Confirm and Start Timer</button>
     </div>
 
     <footer>
@@ -35,12 +39,29 @@
     </footer>
 
     <script>
-        document.getElementById("plan-form").addEventListener("submit", () => {
-            const planValue = document.getElementById("plan").value;
-            if (planValue) {
-                localStorage.setItem("lastPlan", planValue); // Store the plan value
-            }
+        let planCount = 0; // Default value
+
+        function updatePlan(amount) {
+            planCount = Math.max(0, planCount + amount);
+            document.getElementById("plan-count").textContent = planCount;
+        }
+
+                document.getElementById("confirm-button").addEventListener("click", () => {
+            localStorage.setItem("lastPlan", planCount);
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = "/timer";
+            
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "plan_value";
+            input.value = planCount;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit(); // Perform a traditional form submission
         });
+
     </script>
 </body>
 </html>

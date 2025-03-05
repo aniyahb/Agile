@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify,redirect, url_for
 import serial
 import time
 
@@ -49,42 +49,31 @@ def plan():
     return render_template('plan.html', current_round=state["current_round"])
 
 
+
 @app.route('/timer', methods=['GET', 'POST'])
 def timer():
     if request.method == 'POST':
         plan_value = request.form.get('plan_value')
+
         if not plan_value or not plan_value.isdigit():
-            return render_template('timer.html', balls_counter=state["balls_counter"],
-                                   current_round=state["current_round"], error="Invalid input for plan_value")
+            return render_template('plan.html', current_round=state["current_round"], error="Invalid input for plan_value")
 
-        # Connect to Arduino for this request
-        arduino = get_arduino_connection()
-        if arduino:
-            try:
-                arduino.write(plan_value.encode() + b'\n')  # Send value to Arduino
-                response = arduino.readline().decode('utf-8').strip()
-                print(f"Arduino response: {response}")
+        plan_value = int(plan_value)
 
-                if response.isdigit():
-                    state["balls_counter"] = int(response)
-                else:
-                    print(f"Unexpected response from Arduino: {response}")
-            except Exception as e:
-                print(f"Error communicating with Arduino: {e}")
-                return render_template('timer.html', balls_counter=state["balls_counter"],
-                                       error="Error communicating with Arduino.")
-            finally:
-                arduino.close()
+        # Store plan value for this round
+        existing_round = next((r for r in state["allRoundsData"] if r["round"] == state["current_round"]), None)
+        if existing_round:
+            existing_round["plan"] = plan_value
         else:
-            print("Failed to connect to Arduino.")
-            return render_template('timer.html', balls_counter=state["balls_counter"],
-                                   error="Failed to connect to Arduino.")
+            state["allRoundsData"].append({
+                "round": state["current_round"],
+                "plan": plan_value,
+                "total": 0,
+                "defects": 0
+            })
 
-    if request.method == 'GET':
-        reset_arduino()  # Reset the counter on Arduino
-        time.sleep(1)  # Give Arduino time to process
-        state["balls_counter"] = 0  # Reset the counter in Flask/Python
-        print("Counter reset to 0 in Arduino and Python")
+        print(f"DEBUG: Plan value set to {plan_value}, redirecting to Timer")
+        return redirect(url_for('timer'))  # Redirect to GET /timer after setting plan
 
     return render_template('timer.html', balls_counter=state["balls_counter"], current_round=state["current_round"])
 
@@ -121,6 +110,27 @@ def get_round_data(round_number):
         })
     return jsonify({"error": "Round not found"}), 404
 
+@app.route('/defects', methods=['GET'])
+def defects():
+    last_round = next((r for r in state["allRoundsData"] if r["round"] == state["current_round"]), None)
+    defects = last_round["defects"] if last_round else 0
+    return render_template('defects.html', current_round=state["current_round"], defects=defects)
+
+@app.route('/update_defects', methods=['POST'])
+def update_defects():
+    defects_value = request.form.get('defects')
+
+    if not defects_value or not defects_value.isdigit():
+        return jsonify({"error": "Invalid defects value"}), 400
+
+    defects_value = int(defects_value)
+
+    for round_data in state["allRoundsData"]:
+        if round_data["round"] == state["current_round"]:
+            round_data["defects"] = defects_value
+            break
+
+    return jsonify({"message": "Defects updated", "allRoundsData": state["allRoundsData"]})
 
 @app.route('/metric', methods=['GET', 'POST'])
 def metric():
@@ -166,7 +176,7 @@ def next_round():
             "round": state["current_round"],
             "plan": plan_value,
             "total": state["balls_counter"],
-            "defects": 5
+            "defects": 0
         }
         state["allRoundsData"].append(new_round_data)
 
@@ -205,7 +215,7 @@ def update_round():
         "round": state["current_round"],
         "plan": plan_value,
         "total": total_count,
-        "defects": 5  # Keeping it fixed for now
+        "defects": 0  # Keeping it fixed for now
     }
     state["allRoundsData"].append(new_round_data)
 

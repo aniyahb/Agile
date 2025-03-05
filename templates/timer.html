@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ELDP Agile Simulation Game Timer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .timer-container {
+            text-align: center;
+            margin-top: 10px;
+        }
+        h1 {
+            margin: 5px 0;
+        }
+        h2 {
+            margin: 5px 0;
+        }
+        #timer, #ballsCounter {
+            font-size: 6rem; /* Maximize the size */
+            font-weight: bold;
+            margin: 5px 0;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -21,57 +47,59 @@
 
     <form id="next-round-form">
         <input type="hidden" name="plan_value" id="hidden-plan-value">
-        <button type="button" id="next-button" style="display:none;">Next</button>
     </form>
 
     <script>
-        // Countdown timer functionality
         let timerElement = document.getElementById('timer');
-        let nextButton = document.getElementById("next-button");
+        let ballsCounterElement = document.getElementById('ballsCounter');
         let timeLeft = 5; // Set timer duration
+        let eventSource;
+        let finalBallCount = 0;
+        let timerEnded = false;
 
         const countdown = setInterval(() => {
             if (timeLeft <= 0) {
                 clearInterval(countdown);
-                alert("Time's up! Proceed to Metrics.");
-                nextButton.style.display = "block"; // Show Next button
+                alert("Time's up! Proceed to Defects.");
+                timerEnded = true;
+                if (eventSource) eventSource.close(); // Stop live updates
+                goToNextPage(finalBallCount); // Pass final count
             } else {
                 timerElement.textContent = timeLeft;
                 timeLeft--;
             }
         }, 1000); // Update every second
 
-        // Live counter updates using Server-Sent Events (SSE)
-        function startLiveUpdate() {
-            const eventSource = new EventSource("/live_counter");
-            eventSource.onmessage = function(event) {
-                document.getElementById("ballsCounter").innerText = event.data;
-            };
-        }
-        
-        // Start live updates when the page loads
-        window.onload = () => {
-            timerElement.textContent = 5; // Reset the timer
-            document.getElementById('ballsCounter').textContent = 0; // Reset counter
-            startLiveUpdate();
-        };
-
-        // Handle "Next" button click
-        document.getElementById("next-button").addEventListener("click", () => {
-            const planValue = localStorage.getItem("lastPlan") || "50"; // Retrieve stored plan
+        function goToNextPage(ballCount) {
+            const planValue = localStorage.getItem("lastPlan") || "50";
             fetch("/update_round", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ "plan_value": planValue })
+                body: new URLSearchParams({ "plan_value": planValue, "final_count": ballCount })
             })
             .then(response => response.json())
             .then(data => {
                 console.log("DEBUG: Update round response", data);
-                window.location.href = "/metric";
+                window.location.href = "/defects";
             })
             .catch(error => console.error("DEBUG: Fetch error", error));
-        });
+        }
+
+        function startLiveUpdate() {
+            eventSource = new EventSource("/live_counter");
+            eventSource.onmessage = function(event) {
+                if (!timerEnded) {
+                    finalBallCount = event.data;
+                    ballsCounterElement.innerText = event.data;
+                }
+            };
+        }
+        
+        window.onload = () => {
+            timerElement.textContent = 5; // Reset the timer
+            ballsCounterElement.textContent = 0; // Reset counter
+            startLiveUpdate();
+        };
     </script>
 </body>
 </html>
-
