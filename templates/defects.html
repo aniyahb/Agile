@@ -5,20 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enter Defects</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .defect-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+        }
+
+        .defect-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .button-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button-container button {
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            margin: 10px;
+        }
+
+        .defect-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        .defect-wrapper button {
+            font-size: 2rem;
+            padding: 10px 20px;
+            margin: 0 20px;
+        }
+
+        #defect-count {
+            font-size: 3rem;
+            width: 100px;
+            text-align: center;
+        }
+
+        #confirm-button {
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
+<img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="side-logo">
 <body>
     <header>
         <h1>Enter Defects for Round {{ current_round }}</h1>
     </header>
 
     <div class="defect-container">
-        <h2>Defects: <span id="defect-count">{{ defects }}</span></h2>
+        <h2>Defects:</h2>
+
+        <div class="defect-wrapper">
+            <button onclick="updateDefects(-1)">-1</button>
+            <span id="defect-count">{{ defects }}</span>
+            <button onclick="updateDefects(1)">+1</button>
+        </div>
 
         <div class="button-container">
-            <button onclick="updateDefects(1)">+1</button>
-            <button onclick="updateDefects(-1)">-1</button>
-            <button onclick="updateDefects(10)">+10</button>
             <button onclick="updateDefects(-10)">-10</button>
+            <button onclick="updateDefects(10)">+10</button>
         </div>
 
         <button id="confirm-button">Confirm and Proceed</button>
