@@ -19,14 +19,11 @@
             text-align: center;
             margin-top: 10px;
         }
-        h1 {
-            margin: 5px 0;
-        }
-        h2 {
+        h1, h2 {
             margin: 5px 0;
         }
         #timer, #ballsCounter {
-            font-size: 6rem; /* Maximize the size */
+            font-size: 8rem;
             font-weight: bold;
             margin: 5px 0;
         }
@@ -34,15 +31,15 @@
 </head>
 <body>
     <header>
-        <h1>Processing...</h1>
+        <h1>Round {{ current_round }} - {{ active_team }}</h1>
     </header>
 
     <div class="timer-container">
         <h2>Timer:</h2>
-        <p id="timer">5</p> <!-- Countdown timer -->
+        <p id="timer">2:00</p>
 
         <h2>Balls Processed:</h2>
-        <p id="ballsCounter">0</p> <!-- Live counter -->
+        <p id="ballsCounter">0</p>
     </div>
 
     <form id="next-round-form">
@@ -51,66 +48,39 @@
 
     <audio id="start-audio">
         <source src="{{ url_for('static', filename='startbeeps.wav') }}" type="audio/wav">
-        Your browser does not support the audio element.
     </audio>
     <audio id="end-audio">
         <source src="{{ url_for('static', filename='endsound.wav') }}" type="audio/wav">
-        Your browser does not support the audio element.
     </audio>
     <audio id="1min-audio">
         <source src="{{ url_for('static', filename='1minaudio.wav') }}" type="audio/wav">
-        Your browser does not support the audio element.
     </audio>
     <audio id="30sec-audio">
         <source src="{{ url_for('static', filename='30sec.wav') }}" type="audio/wav">
-        Your browser does not support the audio element.
     </audio>
     <audio id="10sec-audio">
         <source src="{{ url_for('static', filename='10sec.wav') }}" type="audio/wav">
-        Your browser does not support the audio element.
     </audio>
-    <script>
-        let timerElement = document.getElementById('timer');
-        let ballsCounterElement = document.getElementById('ballsCounter');
-        let timeLeft = 65; // Set timer duration
-        let eventSource;
-        let finalBallCount = 0;
-        let timerEnded = false;
-        let startAudio = document.getElementById("start-audio");
-        let endAudio = document.getElementById("end-audio");
-        let oneminAudio = document.getElementById("1min-audio");
-        let tensecAudio = document.getElementById("10sec-audio");
-        let thirtysecAudio = document.getElementById("30sec-audio");
 
-        function startCountdown() {
+<script>
+    let timerElement = document.getElementById('timer');
+    let ballsCounterElement = document.getElementById('ballsCounter');
+    let timeLeft = 120;
+    let eventSource;
+    let finalBallCount = 0;
+    let timerEnded = false;
+
+    const startAudio = document.getElementById("start-audio");
+    const endAudio = document.getElementById("end-audio");
+    const oneminAudio = document.getElementById("1min-audio");
+    const thirtysecAudio = document.getElementById("30sec-audio");
+    const tensecAudio = document.getElementById("10sec-audio");
+
+    function startCountdown() {
         let countdown = setInterval(() => {
-            if (timeLeft === 62) {
-            console.log("Attempting to play 1 min audio...");
-            oneminAudio.onended = () => {
-                console.log("1 min audio finished.");
-            };
-            oneminAudio.play().catch(err => {
-                console.error("1 min audio failed to play:", err);
-            });
-        }
-        if (timeLeft === 32) {
-            console.log("Attempting to play 30 sec audio...");
-            thirtysecAudio.onended = () => {
-                console.log("30 sec audio finished.");
-            };
-            thirtysecAudio.play().catch(err => {
-                console.error("30 sec audio failed to play:", err);
-            });
-        }
-        if (timeLeft === 12) {
-            console.log("Attempting to play 10 sec audio...");
-            tensecAudio.onended = () => {
-                console.log("1 min audio finished.");
-            };
-            tensecAudio.play().catch(err => {
-                console.error("10 sec audio failed to play:", err);
-            });
-        }
+            if (timeLeft === 62) oneminAudio.play().catch(console.error);
+            if (timeLeft === 32) thirtysecAudio.play().catch(console.error);
+            if (timeLeft === 12) tensecAudio.play().catch(console.error);
 
             if (timeLeft <= 0) {
                 clearInterval(countdown);
@@ -118,73 +88,60 @@
                 if (eventSource) eventSource.close();
                 goToNextPage(finalBallCount);
             } else {
-                timerElement.textContent = timeLeft;
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = (timeLeft % 60).toString().padStart(2, "0");
+                timerElement.textContent = `${minutes}:${seconds}`;
                 timeLeft--;
             }
         }, 1000);
     }
-            function goToNextPage(ballCount) {
-            console.log("Attempting to play end audio...");
-            endAudio.play().then(() => {
-                // Audio started playing successfully
-                endAudio.onended = () => {
-                    console.log("End audio finished, now submitting and redirecting...");
 
-                    const planValue = localStorage.getItem("lastPlan") || "50";
-                    fetch("/update_round", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: new URLSearchParams({ "plan_value": planValue, "final_count": ballCount })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log("DEBUG: Update round response", data);
-                        window.location.href = "/defects";
-                    })
-                    .catch(error => console.error("DEBUG: Fetch error", error));
-                };
-            }).catch(err => {
-                // If audio failed to play (e.g. due to user gesture requirement), fallback
-                console.error("End audio failed to play:", err);
-                const planValue = localStorage.getItem("lastPlan") || "50";
-                fetch("/update_round", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ "plan_value": planValue, "final_count": ballCount })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    window.location.href = "/defects";
-                })
-                .catch(error => console.error("DEBUG: Fetch error", error));
-            });
-        }
+    function goToNextPage(ballCount) {
+        endAudio.play().then(() => {
+            endAudio.onended = () => submitRound(ballCount);
+        }).catch(() => submitRound(ballCount));
+    }
 
+    function submitRound(ballCount) {
+        const planValue = localStorage.getItem("lastPlan") || "50";
+        fetch("/update_round", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                "plan_value": planValue,
+                "final_count": ballCount
+            })
+        })
+        .then(() => {
+            window.location.href = "/defects";
+        })
+        .catch(console.error);
+    }
 
-        function startLiveUpdate() {
-            eventSource = new EventSource("/live_counter");
-            eventSource.onmessage = function(event) {
-                if (!timerEnded) {
-                    finalBallCount = event.data;
-                    ballsCounterElement.innerText = event.data;
-                }
-            };
-        }
-        
-        window.onload = () => {
-            timerElement.textContent = 65; // Reset the timer
-            ballsCounterElement.textContent = 0; // Reset counter
-            startLiveUpdate();
-            startAudio.onended = () => {
-        console.log("Start audio finished. Countdown starting...");
-        startCountdown();
-    };
-
-    startAudio.play().catch(err => {
-        console.error("Start audio failed:", err);
-        startCountdown(); // fallback if audio doesn't play
-    });
+    function startLiveUpdate() {
+        eventSource = new EventSource("/live_counter");
+        eventSource.onmessage = function(event) {
+            if (!timerEnded) {
+                finalBallCount = event.data;
+                ballsCounterElement.innerText = event.data;
+            }
         };
-    </script>
+    }
+
+
+    window.onload = () => {
+        timerElement.textContent = `${2}:${0}${0}`;
+        ballsCounterElement.textContent = 0;
+    startLiveUpdate();
+
+    // Add a small delay (e.g. 2 seconds) before starting countdown
+    setTimeout(() => {
+        startCountdown();
+    }, 2000); // <- Adjust if you need a bit more time for Arduino reset
+};
+
+
+</script>
+
 </body>
 </html>

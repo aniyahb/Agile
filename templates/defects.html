@@ -10,7 +10,6 @@
             font-family: Arial, sans-serif;
             text-align: center;
         }
-
         .defect-container {
             display: flex;
             flex-direction: column;
@@ -18,78 +17,62 @@
             justify-content: center;
             height: 60vh;
         }
-
         .defect-display {
-            display: flex;
-            align-items: center;
-            justify-content: center;
             font-size: 2rem;
             font-weight: bold;
             margin: 20px 0;
         }
-
-        .button-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .button-container button {
+        .button-container button,
+        .defect-wrapper button {
             font-size: 1.5rem;
             padding: 10px 20px;
             margin: 10px;
         }
-
         .defect-wrapper {
             display: flex;
             align-items: center;
         }
-
-        .defect-wrapper button {
-            font-size: 2rem;
-            padding: 10px 20px;
-            margin: 0 20px;
-        }
-
         #defect-count {
             font-size: 3rem;
             width: 100px;
             text-align: center;
         }
-
         #confirm-button {
             font-size: 1.5rem;
             padding: 10px 20px;
             margin-top: 20px;
         }
-    </style>
+    
+button {
+    font-size: 1.8rem !important;
+    padding: 14px 28px !important;
+    margin: 6px !important;
+}
+
+</style>
 </head>
-<img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="side-logo">
 <body>
     <header>
-        <h1>Enter Defects for Round {{ current_round }}</h1>
+        <h1>Enter Defects for Round {{ current_round }} - {{ active_team }}</h1>
     </header>
 
     <div class="defect-container">
         <h2>Defects:</h2>
-
         <div class="defect-wrapper">
             <button onclick="updateDefects(-1)">-1</button>
             <span id="defect-count">{{ defects }}</span>
             <button onclick="updateDefects(1)">+1</button>
         </div>
-
         <div class="button-container">
             <button onclick="updateDefects(-10)">-10</button>
             <button onclick="updateDefects(10)">+10</button>
         </div>
-
         <button id="confirm-button">Confirm and Proceed</button>
     </div>
 
     <script>
         let defectCount = {{ defects }};
-        
+
         function updateDefects(amount) {
             defectCount = Math.max(0, defectCount + amount);
             document.getElementById("defect-count").textContent = defectCount;
@@ -102,10 +85,10 @@
                 body: new URLSearchParams({ "defects": defectCount })
             })
             .then(response => response.json())
-            .then(data => {
-                window.location.href = "/metric";
+            .then(() => {
+                window.location.href = "/balls_in_play";
             })
-            .catch(error => console.error("Error:", error));
+            .catch(console.error);
         });
     </script>
 </body>

@@ -5,28 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>ELDP Agile Simulation Game Metric Display</title>
+    <style>
+        #metric-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            font-size: 7.6rem;
+            text-align: center;
+            padding: 30px;
+        }
+        body {
+  transform: scale(0.8);
+  transform-origin: top left;
+  width: 125%; /* counteracts the scale shrink */
+    }
+    
+        #metric-display > div {
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 12px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+    
+        #strategize-button-container {
+            margin-top: 10px;
+            text-align: center;
+        }
+    
+        #strategize-button {
+            padding: 5px 16px;
+            font-size: 3rem;
+            font-weight: bold;
+            background-color: #004f9f;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    
+        #strategize-button:hover {
+            background-color: #003a75;
+        }
+    
+        h1#round-number {
+            font-size: 3.4rem;
+        }
+    </style>
+    
+    
+    
+    
 </head>
 <body>
     <header>
         <div class="header-container">
             <div class="round-number">
-                <h1 id="round-number">Round {{ current_round }}</h1>
+                <h1 id="round-number">Round {{ current_round }} - {{ active_team }}</h1>
             </div>
         </div>
     </header>
     
     <div class="metric-container">
-        <div id="metric-display">
+        <div id="strategize-button-container" style="text-align: center; margin-bottom: 10px;">
+      <button id="strategize-button">Strategize</button>
+    </div>
+    <div id="metric-display">
             <div id="plan-metric"></div>
             <div id="total-metric"></div>
             <div id="defects-metric"></div>
             <div id="actual-metric"></div>
             <div id="delta-metric"></div>
+            <div id="points-metric"></div>
         </div>
 
-        <div id="strategize-button-container">
-            <button id="strategize-button">Strategize</button>
-        </div>
     </div>
 
     <footer>
@@ -35,7 +87,7 @@
 
     <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const roundNumber = {{ current_round }}; // Show last completed round
+    const roundNumber = {{ current_round }};
     console.log("DEBUG: Fetching data for Round", roundNumber);
 
     fetch(`/get_round_data/${roundNumber}`)
@@ -47,16 +99,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('defects-metric').textContent = `Defects: ${data.defects}`;
                 document.getElementById('actual-metric').textContent = `Actual: ${data.actual}`;
                 document.getElementById('delta-metric').textContent = `Delta: ${data.delta}`;
+                document.getElementById('points-metric').textContent = `Points: {{ points }}`;
             } else {
                 console.error("Error fetching round data:", data.error);
             }
         })
         .catch(error => console.error('Error fetching round data:', error));
 
-            document.getElementById('strategize-button').addEventListener('click', () => {
-                window.location.href = '/strategize';
-            });
-        });
+    document.getElementById('strategize-button').addEventListener('click', () => {
+        window.location.href = '/strategize';
+    });
+});
     </script>
 </body>
 </html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enter Balls in Play</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+        }
+        .value-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        #balls-count {
+            font-size: 3rem;
+            width: 100px;
+            text-align: center;
+        }
+        button {
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            margin: 10px;
+        }
+    
+button {
+    font-size: 1.8rem !important;
+    padding: 14px 28px !important;
+    margin: 6px !important;
+}
+
+</style>
+</head>
+<body>
+    <header>
+        <h1>Enter Balls in Play for Round {{ current_round }} - {{ active_team }}</h1>
+    </header>
+
+    <div class="container">
+        <h2>Balls in Play:</h2>
+        <div class="value-wrapper">
+            <button onclick="updateBalls(-1)">-1</button>
+            <span id="balls-count">{{ balls_in_play }}</span>
+            <button onclick="updateBalls(1)">+1</button>
+        </div>
+        <div>
+            <button onclick="updateBalls(-10)">-10</button>
+            <button onclick="updateBalls(10)">+10</button>
+        </div>
+        <button id="confirm-button">Confirm and Proceed</button>
+    </div>
+
+    <script>
+        let ballsCount = {{ balls_in_play }};
+
+        function updateBalls(amount) {
+            ballsCount = Math.max(0, ballsCount + amount);
+            document.getElementById("balls-count").textContent = ballsCount;
+        }
+
+        document.getElementById("confirm-button").addEventListener("click", () => {
+            fetch("/update_balls_in_play", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ "balls_in_play": ballsCount })
+            })
+            .then(response => response.json())
+            .then(() => {
+                window.location.href = "/metric";
+            })
+            .catch(console.error);
+        });
+    </script>
+</body>
+</html>
