@@ -1,3 +1,13 @@
+/* File Summary: 
+
+Ball Counter for Pit:
+- Counts how many balls enter the pit
+- Displays the count on the computer screen
+- Type 'r' to reset the counter to zero
+- Updates continuously (~20 times per second)
+
+*/
+
 int switch_balls = 0;  // A counter that tracks the number of times the touch sensor is activated.
 int touchState = 0;  // The current state of the touch sensor (1 for touched, 0 for not touched).
 int lastTouchState = 0; // The previous state of the touch sensor, used to detect state changes.
