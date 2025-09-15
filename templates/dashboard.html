@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ball Counting Quality Control System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #d347b0 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .input-group label {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            min-width: 120px;
+        }
+
+        .input-group input {
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.1em;
+            width: 150px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .timer-display {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+
+        .progress-bar {
+            background: #ddd;
+            height: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .main-table-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .table-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1.2em;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .main-table th {
+            background: linear-gradient(45deg, #667eea, #8a45ce);
+            color: white;
+            padding: 20px 15px;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            border-bottom: 3px solid rgba(255,255,255,0.2);
+        }
+
+        .main-table td {
+            padding: 18px 15px;
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            font-weight: 500;
+        }
+
+        .main-table tbody tr {
+            background-color: white;
+            transition: all 0.3s ease;
+        }
+
+        .main-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .main-table tbody tr:hover {
+            background-color: #e3f2fd;
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .current-row {
+            background: linear-gradient(45deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.1)) !important;
+            border-left: 5px solid #4CAF50;
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.6); }
+        }
+
+        .positive {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .negative {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .empty-cell {
+            color: #999;
+            font-style: italic;
+        }
+
+        .live-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            animation: pulse-value 1.5s infinite;
+        }
+
+        @keyframes pulse-value {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .modal p {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .defects-input-group {
+            margin: 25px 0;
+        }
+
+        .defects-input-group input {
+            padding: 15px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.3em;
+            width: 200px;
+            text-align: center;
+            transition: border-color 0.3s ease;
+        }
+
+        .defects-input-group input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .iteration-complete {
+            background: linear-gradient(45deg, rgba(76, 175, 80, 0.2), rgba(139, 195, 74, 0.2)) !important;
+     r       border-left: 5px solid #4CAF50;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-running {
+            background-color: #4CAF50;
+        }
+
+        .status-waiting {
+            background-color: #FF9800;
+        }
+
+        .status-stopped {
+            background-color: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agile Game</h1>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="input-group">
+                <label for="planInput">Plan Number:</label>
+                <input type="number" id="planInput" placeholder="Enter plan number" min="1">
+                <button class="btn" onclick="setPlan()">Set Plan</button>
+            </div>
+            
+            <div class="timer-display" id="timerDisplay">
+                Ready to Start
+                <span class="status-indicator status-stopped" id="statusIndicator"></span>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn" id="startBtn" onclick="startIteration()" disabled>
+                    Start 2-Minute Counting
+                </button>
+                <button class="btn btn-danger" onclick="resetSystem()">Reset System</button>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+        </div>
+
+        <!-- Main Results Table -->
+        <div class="main-table-container">
+            <div class="table-title">Results (5 Iterations)</div>
+            
+            <table class="main-table">
+                <thead>
+                    <tr>
+                        <th>Iteration</th>
+                        <th>Plan</th>
+                        <th>Actual</th>
+                        <th>Defects</th>
+                        <th>Total</th>
+                        <th>Delta</th>
+                    </tr>
+                </thead>
+                <tbody id="mainTableBody">
+                    <tr id="row-1">
+                        <td>1</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                    </tr>
+                    <tr id="row-2">
+                        <td>2</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                    </tr>
+                    <tr id="row-3">
+                        <td>3</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                    </tr>
+                    <tr id="row-4">
+                        <td>4</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                    </tr>
+                    <tr id="row-5">
+                        <td>5</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Defects Input Modal -->
+    <div id="defectsModal" class="modal">
+        <div class="modal-content">
+            <h2>Game Complete!</h2>
+            <p>Iteration <span id="modalIteration">1</span> finished. How many defects were found in this batch?</p>
+            <div class="defects-input-group">
+                <input type="number" id="defectsInput" placeholder="Enter defects count" min="0" value="0">
+            </div>
+            <button class="btn" onclick="submitDefects()">Submit & Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentIteration = 1;
+        let planNumber = 0;
+        let actualCount = 0;
+        let timerInterval;
+        let eventSource;
+        let timeRemaining = 0;
+        let isRunning = false;
+
+        function setPlan() {
+            const input = document.getElementById('planInput');
+            const plan = parseInt(input.value);
+            
+            if (plan && plan > 0) {
+                planNumber = plan;
+                
+                // Send to backend
+                fetch('/set_plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: plan })
+                });
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('timerDisplay').innerHTML = 'Plan Set! Ready to Start <span class="status-indicator status-waiting"></span>';
+                input.disabled = true;
+                
+                // Fill plan column in table
+                for (let i = 1; i <= 5; i++) {
+                    document.querySelector(`#row-${i} td:nth-child(2)`).textContent = plan;
+                    document.querySelector(`#row-${i} td:nth-child(2)`).className = '';
+                }
+            }
+        }
+
+        function startIteration() {
+            if (isRunning) return;
+            
+            timeRemaining = 120; // 2 minutes
+            isRunning = true;
+            
+            // Highlight current row
+            document.querySelectorAll('.current-row').forEach(row => row.classList.remove('current-row'));
+            document.getElementById(`row-${currentIteration}`).classList.add('current-row');
+            
+            // Start backend iteration
+            fetch('/start_iteration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            // Update UI
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('statusIndicator').className = 'status-indicator status-running';
+            
+            // Start timer
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // Start live updates
+            startLiveUpdates();
+            
+            // Initialize actual count in table
+            updateTableCell(currentIteration, 3, 0, 'live-value');
+        }
+
+        function updateTimer() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            
+            document.getElementById('timerDisplay').innerHTML = 
+                `Iteration ${currentIteration} - ${minutes}:${seconds.toString().padStart(2, '0')} <span class="status-indicator status-running"></span>`;
+            
+            // Update progress bar
+            const progress = ((120 - timeRemaining) / 120) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            timeRemaining--;
+            
+            if (timeRemaining < 0) {
+                stopIteration();
+            }
+        }
+
+        function startLiveUpdates() {
+            eventSource = new EventSource('/live_counter');
+            eventSource.onmessage = function(event) {
+                if (isRunning) {
+                    actualCount = parseInt(event.data);
+                    updateTableCell(currentIteration, 3, actualCount, 'live-value');
+                }
+            };
+        }
+
+        function stopIteration() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // Stop backend iteration
+            fetch('/stop_iteration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            document.getElementById('timerDisplay').innerHTML = 
+                `Iteration ${currentIteration} Complete! <span class="status-indicator status-waiting"></span>`;
+            document.getElementById('progressBar').style.width = '100%';
+            
+            // Remove live value animation
+            document.querySelector(`#row-${currentIteration} td:nth-child(3)`).classList.remove('live-value');
+            
+            // Show defects input modal
+            document.getElementById('modalIteration').textContent = currentIteration;
+            document.getElementById('defectsModal').style.display = 'block';
+        }
+
+        function submitDefects() {
+            const defectsInput = document.getElementById('defectsInput');
+            const defects = parseInt(defectsInput.value) || 0;
+            
+            // Send to backend
+            fetch('/submit_defects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ defects: defects })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const result = data.iteration_data;
+                
+                // Update table
+                updateTableCell(currentIteration, 4, result.defects); // Defects
+                updateTableCell(currentIteration, 5, result.total);   // Total
+                updateTableCell(currentIteration, 6, result.delta >= 0 ? `+${result.delta}` : result.delta, result.delta >= 0 ? 'positive' : 'negative'); // Delta
+                
+                // Mark row as completed
+                document.getElementById(`row-${currentIteration}`).classList.remove('current-row');
+                document.getElementById(`row-${currentIteration}`).classList.add('iteration-complete');
+                
+                // Update current iteration
+                currentIteration = data.current_iteration;
+                
+                // Reset modal
+                document.getElementById('defectsModal').style.display = 'none';
+                defectsInput.value = '0';
+                
+                if (currentIteration <= 5) {
+                    // Prepare for next iteration
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('startBtn').textContent = `Start Iteration ${currentIteration}`;
+                    document.getElementById('timerDisplay').innerHTML = 
+                        `Ready for Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
+                    document.getElementById('progressBar').style.width = '0%';
+                } else {
+                    // All 5 iterations complete
+                    document.getElementById('timerDisplay').innerHTML = 
+                        'All 5 Iterations Complete! <span class="status-indicator status-stopped"></span>';
+                    document.getElementById('startBtn').textContent = 'Process Complete';
+                    document.getElementById('startBtn').disabled = true;
+                }
+            });
+        }
+
+        function updateTableCell(iteration, column, value, className = '') {
+            const cell = document.querySelector(`#row-${iteration} td:nth-child(${column})`);
+            cell.textContent = value;
+            cell.className = className;
+        }
+
+        function resetSystem() {
+            if (confirm('Are you sure you want to reset the entire system?')) {
+                fetch('/reset_system', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(() => {
+                    location.reload();
+                });
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('defectsModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Allow Enter key to submit defects
+        document.getElementById('defectsInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitDefects();
+            }
+        });
+
+        // Load existing data on page load
+        window.onload = function() {
+            // Set current iteration and plan if already set
+            currentIteration = {{ current_iteration }};
+            planNumber = {{ plan_number }};
+            
+            if (planNumber > 0) {
+                document.getElementById('planInput').value = planNumber;
+                document.getElementById('planInput').disabled = true;
+                document.getElementById('startBtn').disabled = false;
+                
+                // Fill plan column
+                for (let i = 1; i <= 5; i++) {
+                    document.querySelector(`#row-${i} td:nth-child(2)`).textContent = planNumber;
+                    document.querySelector(`#row-${i} td:nth-child(2)`).className = '';
+                }
+            }
+            
+            // Load existing iteration data
+            const iterationsData = {{ iterations_data|tojson }};
+            iterationsData.forEach(data => {
+                updateTableCell(data.iteration, 3, data.actual);
+                updateTableCell(data.iteration, 4, data.defects);
+                updateTableCell(data.iteration, 5, data.total);
+                updateTableCell(data.iteration, 6, data.delta >= 0 ? `+${data.delta}` : data.delta, data.delta >= 0 ? 'positive' : 'negative');
+                document.getElementById(`row-${data.iteration}`).classList.add('iteration-complete');
+            });
+        };
+    </script>
+</body>
+</html>
