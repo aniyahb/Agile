@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ball Counting Quality Control System</title>
+    <title>Agile Game Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -282,7 +282,7 @@
 
         .iteration-complete {
             background: linear-gradient(45deg, rgba(76, 175, 80, 0.2), rgba(139, 195, 74, 0.2)) !important;
-     r       border-left: 5px solid #4CAF50;
+            border-left: 5px solid #4CAF50;
         }
 
         .status-indicator {
@@ -310,6 +310,151 @@
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
+        }
+
+        /* Full Screen Counting Overlay */
+        .counting-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(128, 128, 128, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .overlay-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .overlay-title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .overlay-timer {
+            font-size: 8em;
+            font-weight: bold;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.1em;
+        }
+
+        .overlay-progress {
+            width: 80%;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            margin: 0 auto 40px auto;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .overlay-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.4);
+        }
+
+        .overlay-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 60px;
+            height: calc(100vh - 400px);
+            min-height: 300px;
+        }
+
+        .ball-counter-display {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 60px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            border: 2px solid rgba(255,255,255,0.2);
+            min-width: 400px;
+        }
+
+        .counter-label {
+            font-size: 2em;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .counter-value {
+            font-size: 12em;
+            font-weight: bold;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-family: 'Courier New', monospace;
+            animation: pulse-counter 2s infinite;
+        }
+
+        @keyframes pulse-counter {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        .iteration-info {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .iteration-label {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .iteration-number {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .plan-display {
+            font-size: 1.8em;
+            opacity: 0.9;
+        }
+
+        .overlay-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+        }
+
+        .full-dashboard-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .full-dashboard-btn:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -403,6 +548,38 @@
         </div>
     </div>
 
+    <!-- Full Screen Counting Overlay -->
+    <div id="countingOverlay" class="counting-overlay">
+        <div class="overlay-controls">
+            <button class="full-dashboard-btn" onclick="hideCountingOverlay()">
+                Full Dashboard
+            </button>
+        </div>
+
+        <div class="overlay-header">
+            <div class="overlay-title">Agile Game - Ball Counting</div>
+            <div class="overlay-timer" id="overlayTimer">2:00</div>
+            <div class="overlay-progress">
+                <div class="overlay-progress-fill" id="overlayProgressBar"></div>
+            </div>
+        </div>
+
+        <div class="overlay-content">
+            <div class="ball-counter-display">
+                <div class="counter-label">Balls Counted</div>
+                <div class="counter-value" id="overlayBallCount">0</div>
+            </div>
+
+            <div class="iteration-info">
+                <div class="iteration-label">Current Iteration</div>
+                <div class="iteration-number" id="overlayIteration">1</div>
+                <div class="plan-display">
+                    Plan: <span id="overlayPlan">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Defects Input Modal -->
     <div id="defectsModal" class="modal">
         <div class="modal-content">
@@ -443,19 +620,22 @@
                 document.getElementById('timerDisplay').innerHTML = 'Plan Set! Ready to Start <span class="status-indicator status-waiting"></span>';
                 input.disabled = true;
                 
-                // Fill plan column in table
-                for (let i = 1; i <= 5; i++) {
-                    document.querySelector(`#row-${i} td:nth-child(2)`).textContent = plan;
-                    document.querySelector(`#row-${i} td:nth-child(2)`).className = '';
-                }
+                // Only fill plan for CURRENT iteration
+                document.querySelector(`#row-${currentIteration} td:nth-child(2)`).textContent = plan;
+                document.querySelector(`#row-${currentIteration} td:nth-child(2)`).className = '';
             }
         }
 
         function startIteration() {
             if (isRunning) return;
             
+            console.log('Starting iteration:', currentIteration); // Debug logging
+            
             timeRemaining = 120; // 2 minutes
             isRunning = true;
+            
+            // Show counting overlay
+            showCountingOverlay();
             
             // Highlight current row
             document.querySelectorAll('.current-row').forEach(row => row.classList.remove('current-row'));
@@ -465,13 +645,17 @@
             fetch('/start_iteration', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
-            });
+            })
+            .then(response => response.json())
+            .then(data => console.log('Backend response:', data)) // Debug logging
+            .catch(error => console.error('Backend error:', error)); // Debug logging
             
             // Update UI
             document.getElementById('startBtn').disabled = true;
-            document.getElementById('statusIndicator').className = 'status-indicator status-running';
             
             // Start timer
+            console.log('Starting timer interval'); // Debug logging
+            updateTimer(); // Initial call to set immediately
             timerInterval = setInterval(updateTimer, 1000);
             
             // Start live updates
@@ -479,24 +663,35 @@
             
             // Initialize actual count in table
             updateTableCell(currentIteration, 3, 0, 'live-value');
-        }
+}
 
         function updateTimer() {
-            const minutes = Math.floor(timeRemaining / 60);
-            const seconds = timeRemaining % 60;
-            
-            document.getElementById('timerDisplay').innerHTML = 
-                `Iteration ${currentIteration} - ${minutes}:${seconds.toString().padStart(2, '0')} <span class="status-indicator status-running"></span>`;
-            
-            // Update progress bar
-            const progress = ((120 - timeRemaining) / 120) * 100;
-            document.getElementById('progressBar').style.width = progress + '%';
-            
+            // Decrement time first
             timeRemaining--;
             
+            // Check if time is up
             if (timeRemaining < 0) {
+                console.log('Timer finished, stopping iteration');
                 stopIteration();
+                return;
             }
+            
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            console.log(`Timer: ${timeDisplay}, timeRemaining: ${timeRemaining}`);
+            
+            // Update both dashboard and overlay timers
+            document.getElementById('timerDisplay').innerHTML = 
+                `Iteration ${currentIteration} - ${timeDisplay} <span class="status-indicator status-running"></span>`;
+            document.getElementById('overlayTimer').textContent = timeDisplay;
+            
+            // Update progress bars - calculate based on time elapsed
+            const progress = ((120 - timeRemaining) / 120) * 100;
+            console.log(`Progress: ${progress}%`);
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('overlayProgressBar').style.width = progress + '%';
         }
 
         function startLiveUpdates() {
@@ -504,7 +699,9 @@
             eventSource.onmessage = function(event) {
                 if (isRunning) {
                     actualCount = parseInt(event.data);
+                    // Update both dashboard table and overlay
                     updateTableCell(currentIteration, 3, actualCount, 'live-value');
+                    document.getElementById('overlayBallCount').textContent = actualCount;
                 }
             };
         }
@@ -516,6 +713,9 @@
             if (eventSource) {
                 eventSource.close();
             }
+            
+            // Hide counting overlay
+            hideCountingOverlay();
             
             // Stop backend iteration
             fetch('/stop_iteration', {
@@ -566,11 +766,13 @@
                 defectsInput.value = '0';
                 
                 if (currentIteration <= 5) {
-                    // Prepare for next iteration
-                    document.getElementById('startBtn').disabled = false;
+                    // Prepare for next iteration - re-enable plan input
+                    document.getElementById('planInput').disabled = false;
+                    document.getElementById('planInput').value = '';
+                    document.getElementById('startBtn').disabled = true;  // Disable until new plan is set
                     document.getElementById('startBtn').textContent = `Start Iteration ${currentIteration}`;
                     document.getElementById('timerDisplay').innerHTML = 
-                        `Ready for Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
+                        `Set Plan for Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
                     document.getElementById('progressBar').style.width = '0%';
                 } else {
                     // All 5 iterations complete
@@ -600,6 +802,19 @@
             }
         }
 
+        function showCountingOverlay() {
+            document.getElementById('countingOverlay').style.display = 'block';
+            document.getElementById('overlayIteration').textContent = currentIteration;
+            document.getElementById('overlayPlan').textContent = planNumber || '-';
+            document.getElementById('overlayBallCount').textContent = '0';
+            document.getElementById('overlayTimer').textContent = '2:00';
+            document.getElementById('overlayProgressBar').style.width = '0%';
+        }
+
+        function hideCountingOverlay() {
+            document.getElementById('countingOverlay').style.display = 'none';
+        }
+
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('defectsModal');
@@ -626,10 +841,10 @@
                 document.getElementById('planInput').disabled = true;
                 document.getElementById('startBtn').disabled = false;
                 
-                // Fill plan column
-                for (let i = 1; i <= 5; i++) {
-                    document.querySelector(`#row-${i} td:nth-child(2)`).textContent = planNumber;
-                    document.querySelector(`#row-${i} td:nth-child(2)`).className = '';
+                // Only fill plan for current iteration if no data exists yet
+                if (currentIteration <= 5) {
+                    document.querySelector(`#row-${currentIteration} td:nth-child(2)`).textContent = planNumber;
+                    document.querySelector(`#row-${currentIteration} td:nth-child(2)`).className = '';
                 }
             }
             
@@ -640,6 +855,8 @@
                 updateTableCell(data.iteration, 4, data.defects);
                 updateTableCell(data.iteration, 5, data.total);
                 updateTableCell(data.iteration, 6, data.delta >= 0 ? `+${data.delta}` : data.delta, data.delta >= 0 ? 'positive' : 'negative');
+                // Also fill in the plan for completed iterations
+                updateTableCell(data.iteration, 2, data.plan);
                 document.getElementById(`row-${data.iteration}`).classList.add('iteration-complete');
             });
         };
