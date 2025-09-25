@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agile Game Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -244,6 +245,12 @@
             animation: modalSlideIn 0.3s ease;
         }
 
+        .modal-content-large {
+            max-width: 900px;
+            margin: 5% auto;
+            padding: 30px;
+        }
+
         @keyframes modalSlideIn {
             from { transform: translateY(-50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -310,6 +317,59 @@
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
+        }
+
+        /* Chart container styling */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        .results-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .summary-section h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .summary-section p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 15px 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-plan {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+
+        .legend-actual {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
         }
 
         /* Full Screen Counting Overlay */
@@ -592,6 +652,50 @@
         </div>
     </div>
 
+    <!-- Final Results Modal -->
+    <div id="finalResultsModal" class="modal">
+        <div class="modal-content modal-content-large">
+            <h2>🎉 Game Complete - Final Results</h2>
+            
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-plan"></div>
+                    <span>Plan</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-actual"></div>
+                    <span>Actual</span>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="resultsChart"></canvas>
+            </div>
+            
+            <div class="results-summary">
+                <div class="summary-section">
+                    <h3>Game Summary</h3>
+                    <p>Total Iterations: <strong>5</strong></p>
+                    <p>Average Plan: <strong id="avgPlan">0</strong></p>
+                    <p>Average Actual: <strong id="avgActual">0</strong></p>
+                    <p>Total Defects: <strong id="totalDefects">0</strong></p>
+                </div>
+                <div class="summary-section">
+                    <h3>Performance</h3>
+                    <p>Best Delta: <strong id="bestDelta">0</strong></p>
+                    <p>Worst Delta: <strong id="worstDelta">0</strong></p>
+                    <p>Total Delta: <strong id="totalDelta">0</strong></p>
+                    <p>Accuracy Rate: <strong id="accuracyRate">0%</strong></p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn" onclick="closeResultsModal()">Close Results</button>
+                <button class="btn btn-danger" onclick="resetSystem()">Start New Game</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let currentIteration = 1;
@@ -663,7 +767,7 @@
             
             // Initialize actual count in table
             updateTableCell(currentIteration, 3, 0, 'live-value');
-}
+        }
 
         function updateTimer() {
             // Decrement time first
@@ -739,6 +843,9 @@
             const defectsInput = document.getElementById('defectsInput');
             const defects = parseInt(defectsInput.value) || 0;
             
+            // Remember which iteration we just completed
+            const completedIteration = currentIteration;
+            
             // Send to backend
             fetch('/submit_defects', {
                 method: 'POST',
@@ -750,13 +857,13 @@
                 const result = data.iteration_data;
                 
                 // Update table
-                updateTableCell(currentIteration, 4, result.defects); // Defects
-                updateTableCell(currentIteration, 5, result.total);   // Total
-                updateTableCell(currentIteration, 6, result.delta >= 0 ? `+${result.delta}` : result.delta, result.delta >= 0 ? 'positive' : 'negative'); // Delta
+                updateTableCell(completedIteration, 4, result.defects); // Defects
+                updateTableCell(completedIteration, 5, result.total);   // Total
+                updateTableCell(completedIteration, 6, result.delta >= 0 ? `+${result.delta}` : result.delta, result.delta >= 0 ? 'positive' : 'negative'); // Delta
                 
                 // Mark row as completed
-                document.getElementById(`row-${currentIteration}`).classList.remove('current-row');
-                document.getElementById(`row-${currentIteration}`).classList.add('iteration-complete');
+                document.getElementById(`row-${completedIteration}`).classList.remove('current-row');
+                document.getElementById(`row-${completedIteration}`).classList.add('iteration-complete');
                 
                 // Update current iteration
                 currentIteration = data.current_iteration;
@@ -765,7 +872,11 @@
                 document.getElementById('defectsModal').style.display = 'none';
                 defectsInput.value = '0';
                 
-                if (currentIteration <= 5) {
+                // Check if we just completed iteration 5 (final iteration)
+                if (completedIteration === 5) {
+                    // All 5 iterations complete - show final results graph
+                    showFinalResults();
+                } else {
                     // Prepare for next iteration - re-enable plan input
                     document.getElementById('planInput').disabled = false;
                     document.getElementById('planInput').value = '';
@@ -774,14 +885,179 @@
                     document.getElementById('timerDisplay').innerHTML = 
                         `Set Plan for Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
                     document.getElementById('progressBar').style.width = '0%';
-                } else {
-                    // All 5 iterations complete
-                    document.getElementById('timerDisplay').innerHTML = 
-                        'All 5 Iterations Complete! <span class="status-indicator status-stopped"></span>';
-                    document.getElementById('startBtn').textContent = 'Process Complete';
-                    document.getElementById('startBtn').disabled = true;
                 }
             });
+        }
+
+        function showFinalResults() {
+            // Use existing table data - no backend call needed
+            const iterations = [];
+            for (let i = 1; i <= 5; i++) {
+                const row = document.getElementById(`row-${i}`);
+                const cells = row.querySelectorAll('td');
+                iterations.push({
+                    iteration: i,
+                    plan: parseInt(cells[1].textContent) || 0,
+                    actual: parseInt(cells[2].textContent) || 0,
+                    defects: parseInt(cells[3].textContent) || 0,
+                    total: parseInt(cells[4].textContent) || 0,
+                    delta: parseInt(cells[5].textContent.replace('+', '')) || 0
+                });
+            }
+            
+            // Show the modal
+            document.getElementById('finalResultsModal').style.display = 'block';
+            
+            // Create the chart
+            createResultsChart(iterations);
+            
+            // Update summary statistics
+            updateSummaryStats(iterations);
+            
+            // Update UI
+            document.getElementById('timerDisplay').innerHTML = 
+                'All 5 Iterations Complete! View Results Above <span class="status-indicator status-stopped"></span>';
+            document.getElementById('startBtn').textContent = 'Process Complete';
+            document.getElementById('startBtn').disabled = true;
+        }
+
+        function createResultsChart(iterations) {
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            
+            const labels = iterations.map(iter => `Iteration ${iter.iteration}`);
+            const planData = iterations.map(iter => iter.plan);
+            const actualData = iterations.map(iter => iter.actual);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Plan',
+                        data: planData,
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 4,
+                        pointBackgroundColor: 'rgb(102, 126, 234)',
+                        pointBorderColor: 'white',
+                        pointBorderWidth: 2,
+                        pointRadius: 8,
+                        tension: 0.4
+                    }, {
+                        label: 'Actual',
+                        data: actualData,
+                        borderColor: 'rgb(76, 175, 80)',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        borderWidth: 4,
+                        pointBackgroundColor: 'rgb(76, 175, 80)',
+                        pointBorderColor: 'white',
+                        pointBorderWidth: 2,
+                        pointRadius: 8,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false // We have custom legend
+                        },
+                        title: {
+                            display: true,
+                            text: 'Plan vs Actual Performance',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            },
+                            color: '#333'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 120,
+                            title: {
+                                display: true,
+                                text: 'Number of Balls',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                color: '#666'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                color: '#666',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Iteration',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                color: '#666'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                color: '#666',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    hover: {
+                        animationDuration: 400
+                    },
+                    elements: {
+                        line: {
+                            borderCapStyle: 'round'
+                        },
+                        point: {
+                            hoverRadius: 10,
+                            hoverBorderWidth: 3
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSummaryStats(iterations) {
+            const avgPlan = Math.round(iterations.reduce((sum, iter) => sum + iter.plan, 0) / 5);
+            const avgActual = Math.round(iterations.reduce((sum, iter) => sum + iter.actual, 0) / 5);
+            const totalDefects = iterations.reduce((sum, iter) => sum + iter.defects, 0);
+            const deltas = iterations.map(iter => iter.delta);
+            const bestDelta = Math.max(...deltas);
+            const worstDelta = Math.min(...deltas);
+            const totalDelta = deltas.reduce((sum, delta) => sum + delta, 0);
+            const accuracyRate = Math.round((iterations.filter(iter => Math.abs(iter.delta) <= 2).length / 5) * 100);
+            
+            document.getElementById('avgPlan').textContent = avgPlan;
+            document.getElementById('avgActual').textContent = avgActual;
+            document.getElementById('totalDefects').textContent = totalDefects;
+            document.getElementById('bestDelta').textContent = bestDelta >= 0 ? `+${bestDelta}` : bestDelta;
+            document.getElementById('worstDelta').textContent = worstDelta >= 0 ? `+${worstDelta}` : worstDelta;
+            document.getElementById('totalDelta').textContent = totalDelta >= 0 ? `+${totalDelta}` : totalDelta;
+            document.getElementById('accuracyRate').textContent = `${accuracyRate}%`;
+        }
+
+        function closeResultsModal() {
+            document.getElementById('finalResultsModal').style.display = 'none';
         }
 
         function updateTableCell(iteration, column, value, className = '') {
@@ -817,9 +1093,13 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('defectsModal');
-            if (event.target === modal) {
-                modal.style.display = 'none';
+            const defectsModal = document.getElementById('defectsModal');
+            const resultsModal = document.getElementById('finalResultsModal');
+            if (event.target === defectsModal) {
+                defectsModal.style.display = 'none';
+            }
+            if (event.target === resultsModal) {
+                resultsModal.style.display = 'none';
             }
         }
 
@@ -859,6 +1139,14 @@
                 updateTableCell(data.iteration, 2, data.plan);
                 document.getElementById(`row-${data.iteration}`).classList.add('iteration-complete');
             });
+            
+            // If all 5 iterations are complete, show the appropriate UI state
+            if (iterationsData.length === 5) {
+                document.getElementById('timerDisplay').innerHTML = 
+                    'All 5 Iterations Complete! <span class="status-indicator status-stopped"></span>';
+                document.getElementById('startBtn').textContent = 'Process Complete';
+                document.getElementById('startBtn').disabled = true;
+            }
         };
     </script>
 </body>

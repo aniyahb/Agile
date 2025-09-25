@@ -139,6 +139,16 @@ def get_current_count():
     """Get current ball count"""
     return jsonify({"count": state["ball_count"]})
 
+@app.route('/get_final_results')
+def get_final_results():
+    """Get final results for all iterations"""
+    return jsonify({
+        "success": True,
+        "iterations_data": state["iterations_data"],
+        "total_iterations": len(state["iterations_data"]),
+        "game_complete": len(state["iterations_data"]) == 5
+    })
+
 @app.route('/live_counter')
 def live_counter():
     """Server-sent events for live ball counting"""
