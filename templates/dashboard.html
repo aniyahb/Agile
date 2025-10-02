@@ -110,6 +110,10 @@
             background: linear-gradient(45deg, #f44336, #d32f2f);
         }
 
+        .btn-warning {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+        }
+
         .progress-bar {
             background: #ddd;
             height: 10px;
@@ -516,6 +520,113 @@
             border-color: rgba(255,255,255,0.5);
             transform: translateY(-2px);
         }
+
+        /* Planning Modal Styles */
+        .planning-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .planning-modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 10% auto;
+            padding: 50px;
+            border-radius: 30px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+            animation: modalSlideIn 0.3s ease;
+            color: white;
+        }
+
+        .planning-timer {
+            font-size: 10em;
+            font-weight: bold;
+            text-shadow: 0 5px 30px rgba(0,0,0,0.5);
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.1em;
+        }
+
+        .planning-progress {
+            width: 100%;
+            height: 15px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            margin: 30px 0;
+            overflow: hidden;
+        }
+
+        .planning-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .planning-input-group {
+            margin: 40px 0;
+        }
+
+        .planning-input-group label {
+            font-size: 1.8em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .planning-input-group input {
+            padding: 20px 30px;
+            border: 3px solid rgba(255,255,255,0.5);
+            border-radius: 15px;
+            font-size: 2em;
+            width: 250px;
+            text-align: center;
+            background: rgba(255,255,255,0.9);
+            transition: all 0.3s ease;
+        }
+
+        .planning-input-group input:focus {
+            border-color: white;
+            outline: none;
+            background: white;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .planning-submit-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 20px 60px;
+            border-radius: 30px;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-top: 20px;
+        }
+
+        .planning-submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+
+        .planning-submit-btn:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
@@ -524,18 +635,15 @@
         
         <!-- Control Panel -->
         <div class="control-panel">
-            <div class="input-group">
-                <label for="planInput">Plan Number:</label>
-                <input type="number" id="planInput" placeholder="Enter plan number" min="1">
-                <button class="btn" onclick="setPlan()">Set Plan</button>
-            </div>
-            
             <div class="timer-display" id="timerDisplay">
-                Ready to Start
+                Ready to Start Iteration <span id="currentIterationDisplay">1</span>
                 <span class="status-indicator status-stopped" id="statusIndicator"></span>
             </div>
             
             <div style="text-align: center;">
+                <button class="btn btn-warning" id="planningBtn" onclick="startPlanningTimer()">
+                    Start Planning Timer
+                </button>
                 <button class="btn" id="startBtn" onclick="startIteration()" disabled>
                     Start 2-Minute Counting
                 </button>
@@ -605,6 +713,22 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Planning Timer Modal -->
+    <div id="planningModal" class="planning-modal">
+        <div class="planning-modal-content">
+            <h2 style="font-size: 2.5em; margin-bottom: 20px;">Planning Phase - Iteration <span id="planningIterationNum">1</span></h2>
+            <div class="planning-timer" id="planningTimer">2:00</div>
+            <div class="planning-progress">
+                <div class="planning-progress-fill" id="planningProgressBar"></div>
+            </div>
+            <div class="planning-input-group">
+                <label for="planningInput">Enter Your Plan:</label>
+                <input type="number" id="planningInput" placeholder="0" min="1" autofocus>
+            </div>
+            <button class="planning-submit-btn" onclick="submitPlan()">Submit Plan</button>
         </div>
     </div>
 
@@ -702,38 +826,173 @@
         let planNumber = 0;
         let actualCount = 0;
         let timerInterval;
+        let planningTimerInterval;
         let eventSource;
         let timeRemaining = 0;
+        let planningTimeRemaining = 0;
         let isRunning = false;
+        let isPlanningActive = false;
+        let alertsPlayed = new Set();
 
-        function setPlan() {
-            const input = document.getElementById('planInput');
+        // Text-to-speech function
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 0.5;  // Lower pitch for deeper voice
+            utterance.volume = 1.0;
+            speechSynthesis.speak(utterance);
+        }
+
+        function startPlanningTimer() {
+            if (isPlanningActive) return;
+            
+            // Determine planning time: 2 minutes for iteration 1, 1 minute for others
+            planningTimeRemaining = currentIteration === 1 ? 120 : 60;
+            isPlanningActive = true;
+            alertsPlayed.clear();
+            
+            // Show planning modal
+            document.getElementById('planningModal').style.display = 'block';
+            document.getElementById('planningIterationNum').textContent = currentIteration;
+            document.getElementById('planningInput').value = '';
+            document.getElementById('planningInput').focus();
+            
+            // Disable planning button
+            document.getElementById('planningBtn').disabled = true;
+            
+            // Start planning timer
+            updatePlanningTimer();
+            planningTimerInterval = setInterval(updatePlanningTimer, 1000);
+        }
+
+        function updatePlanningTimer() {
+            // Decrement time first
+            planningTimeRemaining--;
+            
+            // Get max time for progress calculation
+            const maxTime = currentIteration === 1 ? 120 : 60;
+            
+            // Voice announcements for planning timer
+            if (planningTimeRemaining === 60 && !alertsPlayed.has(60)) {
+                speak("One minute remaining");
+                alertsPlayed.add(60);
+            } else if (planningTimeRemaining === 45 && !alertsPlayed.has(45)) {
+                speak("Forty five seconds");
+                alertsPlayed.add(45);
+            } else if (planningTimeRemaining === 30 && !alertsPlayed.has(30)) {
+                speak("Thirty seconds");
+                alertsPlayed.add(30);
+            } else if (planningTimeRemaining === 15 && !alertsPlayed.has(15)) {
+                speak("Fifteen seconds");
+                alertsPlayed.add(15);
+            } else if (planningTimeRemaining === 10 && !alertsPlayed.has(10)) {
+                speak("Ten");
+                alertsPlayed.add(10);
+            } else if (planningTimeRemaining === 9 && !alertsPlayed.has(9)) {
+                speak("Nine");
+                alertsPlayed.add(9);
+            } else if (planningTimeRemaining === 8 && !alertsPlayed.has(8)) {
+                speak("Eight");
+                alertsPlayed.add(8);
+            } else if (planningTimeRemaining === 7 && !alertsPlayed.has(7)) {
+                speak("Seven");
+                alertsPlayed.add(7);
+            } else if (planningTimeRemaining === 6 && !alertsPlayed.has(6)) {
+                speak("Six");
+                alertsPlayed.add(6);
+            } else if (planningTimeRemaining === 5 && !alertsPlayed.has(5)) {
+                speak("Five");
+                alertsPlayed.add(5);
+            } else if (planningTimeRemaining === 4 && !alertsPlayed.has(4)) {
+                speak("Four");
+                alertsPlayed.add(4);
+            } else if (planningTimeRemaining === 3 && !alertsPlayed.has(3)) {
+                speak("Three");
+                alertsPlayed.add(3);
+            } else if (planningTimeRemaining === 2 && !alertsPlayed.has(2)) {
+                speak("Two");
+                alertsPlayed.add(2);
+            } else if (planningTimeRemaining === 1 && !alertsPlayed.has(1)) {
+                speak("One");
+                alertsPlayed.add(1);
+            }
+            
+            // Check if time is up
+            if (planningTimeRemaining < 0) {
+                clearInterval(planningTimerInterval);
+                speak("Time's up. Please enter your plan.");
+                
+                // Force plan entry - disable submit button until they enter something
+                const planInput = document.getElementById('planningInput');
+                const submitBtn = document.querySelector('.planning-submit-btn');
+                
+                if (!planInput.value || parseInt(planInput.value) <= 0) {
+                    submitBtn.disabled = true;
+                    planInput.addEventListener('input', function() {
+                        submitBtn.disabled = !(planInput.value && parseInt(planInput.value) > 0);
+                    });
+                }
+                
+                return;
+            }
+            
+            const minutes = Math.floor(planningTimeRemaining / 60);
+            const seconds = planningTimeRemaining % 60;
+            const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('planningTimer').textContent = timeDisplay;
+            
+            // Update progress bar
+            const progress = ((maxTime - planningTimeRemaining) / maxTime) * 100;
+            document.getElementById('planningProgressBar').style.width = progress + '%';
+        }
+
+        function submitPlan() {
+            const input = document.getElementById('planningInput');
             const plan = parseInt(input.value);
             
-            if (plan && plan > 0) {
-                planNumber = plan;
-                
-                // Send to backend
-                fetch('/set_plan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: plan })
-                });
-                
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('timerDisplay').innerHTML = 'Plan Set! Ready to Start <span class="status-indicator status-waiting"></span>';
-                input.disabled = true;
-                
-                // Only fill plan for CURRENT iteration
-                document.querySelector(`#row-${currentIteration} td:nth-child(2)`).textContent = plan;
-                document.querySelector(`#row-${currentIteration} td:nth-child(2)`).className = '';
+            if (!plan || plan <= 0) {
+                alert('Please enter a valid plan number greater than 0');
+                return;
             }
+            
+            // Stop planning timer
+            clearInterval(planningTimerInterval);
+            isPlanningActive = false;
+            
+            // Set the plan
+            planNumber = plan;
+            
+            // Send to backend
+            fetch('/set_plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: plan })
+            });
+            
+            // Update table
+            document.querySelector(`#row-${currentIteration} td:nth-child(2)`).textContent = plan;
+            document.querySelector(`#row-${currentIteration} td:nth-child(2)`).className = '';
+            
+            // Close modal
+            document.getElementById('planningModal').style.display = 'none';
+            
+            // Enable start button, disable planning button
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('planningBtn').disabled = true;
+            
+            // Update display
+            document.getElementById('timerDisplay').innerHTML = 
+                `Plan Set! Ready to Start Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
         }
 
         function startIteration() {
             if (isRunning) return;
             
-            console.log('Starting iteration:', currentIteration); // Debug logging
+            console.log('Starting iteration:', currentIteration);
+            
+            // Reset alerts tracking for new iteration
+            alertsPlayed.clear();
             
             timeRemaining = 120; // 2 minutes
             isRunning = true;
@@ -751,14 +1010,14 @@
                 headers: { 'Content-Type': 'application/json' }
             })
             .then(response => response.json())
-            .then(data => console.log('Backend response:', data)) // Debug logging
-            .catch(error => console.error('Backend error:', error)); // Debug logging
+            .then(data => console.log('Backend response:', data))
+            .catch(error => console.error('Backend error:', error));
             
             // Update UI
             document.getElementById('startBtn').disabled = true;
             
             // Start timer
-            console.log('Starting timer interval'); // Debug logging
+            console.log('Starting timer interval');
             updateTimer(); // Initial call to set immediately
             timerInterval = setInterval(updateTimer, 1000);
             
@@ -773,9 +1032,55 @@
             // Decrement time first
             timeRemaining--;
             
+            // Voice announcements
+            if (timeRemaining === 60 && !alertsPlayed.has(60)) {
+                speak("One minute remaining");
+                alertsPlayed.add(60);
+            } else if (timeRemaining === 45 && !alertsPlayed.has(45)) {
+                speak("Forty five seconds");
+                alertsPlayed.add(45);
+            } else if (timeRemaining === 30 && !alertsPlayed.has(30)) {
+                speak("Thirty seconds");
+                alertsPlayed.add(30);
+            } else if (timeRemaining === 15 && !alertsPlayed.has(15)) {
+                speak("Fifteen seconds");
+                alertsPlayed.add(15);
+            } else if (timeRemaining === 10 && !alertsPlayed.has(10)) {
+                speak("Ten");
+                alertsPlayed.add(10);
+            } else if (timeRemaining === 9 && !alertsPlayed.has(9)) {
+                speak("Nine");
+                alertsPlayed.add(9);
+            } else if (timeRemaining === 8 && !alertsPlayed.has(8)) {
+                speak("Eight");
+                alertsPlayed.add(8);
+            } else if (timeRemaining === 7 && !alertsPlayed.has(7)) {
+                speak("Seven");
+                alertsPlayed.add(7);
+            } else if (timeRemaining === 6 && !alertsPlayed.has(6)) {
+                speak("Six");
+                alertsPlayed.add(6);
+            } else if (timeRemaining === 5 && !alertsPlayed.has(5)) {
+                speak("Five");
+                alertsPlayed.add(5);
+            } else if (timeRemaining === 4 && !alertsPlayed.has(4)) {
+                speak("Four");
+                alertsPlayed.add(4);
+            } else if (timeRemaining === 3 && !alertsPlayed.has(3)) {
+                speak("Three");
+                alertsPlayed.add(3);
+            } else if (timeRemaining === 2 && !alertsPlayed.has(2)) {
+                speak("Two");
+                alertsPlayed.add(2);
+            } else if (timeRemaining === 1 && !alertsPlayed.has(1)) {
+                speak("One");
+                alertsPlayed.add(1);
+            }
+            
             // Check if time is up
             if (timeRemaining < 0) {
                 console.log('Timer finished, stopping iteration');
+                speak("Time's up");
                 stopIteration();
                 return;
             }
@@ -877,13 +1182,12 @@
                     // All 5 iterations complete - show final results graph
                     showFinalResults();
                 } else {
-                    // Prepare for next iteration - re-enable plan input
-                    document.getElementById('planInput').disabled = false;
-                    document.getElementById('planInput').value = '';
-                    document.getElementById('startBtn').disabled = true;  // Disable until new plan is set
-                    document.getElementById('startBtn').textContent = `Start Iteration ${currentIteration}`;
+                    // Prepare for next iteration - enable planning button
+                    document.getElementById('planningBtn').disabled = false;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('currentIterationDisplay').textContent = currentIteration;
                     document.getElementById('timerDisplay').innerHTML = 
-                        `Set Plan for Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
+                        `Ready to Start Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
                     document.getElementById('progressBar').style.width = '0%';
                 }
             });
@@ -919,6 +1223,7 @@
                 'All 5 Iterations Complete! View Results Above <span class="status-indicator status-stopped"></span>';
             document.getElementById('startBtn').textContent = 'Process Complete';
             document.getElementById('startBtn').disabled = true;
+            document.getElementById('planningBtn').disabled = true;
         }
 
         function createResultsChart(iterations) {
@@ -1091,7 +1396,7 @@
             document.getElementById('countingOverlay').style.display = 'none';
         }
 
-        // Close modal when clicking outside
+        // Close modal when clicking outside (not for planning modal - must complete)
         window.onclick = function(event) {
             const defectsModal = document.getElementById('defectsModal');
             const resultsModal = document.getElementById('finalResultsModal');
@@ -1102,6 +1407,13 @@
                 resultsModal.style.display = 'none';
             }
         }
+
+        // Allow Enter key to submit in planning modal
+        document.getElementById('planningInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitPlan();
+            }
+        });
 
         // Allow Enter key to submit defects
         document.getElementById('defectsInput').addEventListener('keypress', function(e) {
@@ -1116,10 +1428,11 @@
             currentIteration = {{ current_iteration }};
             planNumber = {{ plan_number }};
             
+            document.getElementById('currentIterationDisplay').textContent = currentIteration;
+            
             if (planNumber > 0) {
-                document.getElementById('planInput').value = planNumber;
-                document.getElementById('planInput').disabled = true;
                 document.getElementById('startBtn').disabled = false;
+                document.getElementById('planningBtn').disabled = true;
                 
                 // Only fill plan for current iteration if no data exists yet
                 if (currentIteration <= 5) {
@@ -1146,6 +1459,7 @@
                     'All 5 Iterations Complete! <span class="status-indicator status-stopped"></span>';
                 document.getElementById('startBtn').textContent = 'Process Complete';
                 document.getElementById('startBtn').disabled = true;
+                document.getElementById('planningBtn').disabled = true;
             }
         };
     </script>
