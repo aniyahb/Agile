@@ -776,7 +776,7 @@
         </div>
     </div>
 
-    <!-- Final Results Modal -->
+    <!-- Final Results Chart Modal -->
     <div id="finalResultsModal" class="modal">
         <div class="modal-content modal-content-large">
             <h2>🎉 Game Complete - Final Results</h2>
@@ -833,19 +833,81 @@
         let isRunning = false;
         let isPlanningActive = false;
         let alertsPlayed = new Set();
+        let alarmAudio = null
+        let audioUnlocked = false;
+
+        let speechQueue = [];
+        let isSpeaking = false;
 
         // Text-to-speech function
         function speak(text) {
+            speechQueue.push(text);
+            processSpeechQueue();
+        }
+
+        function processSpeechQueue() {
+            if (isSpeaking || speechQueue.length === 0) {
+                return;
+            }
+            isSpeaking = true;
+            const text = speechQueue.shift();
+            
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
+            
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
-            utterance.pitch = 0.5;  // Lower pitch for deeper voice
+            utterance.pitch = 0.5;
             utterance.volume = 1.0;
-            speechSynthesis.speak(utterance);
+            
+            utterance.onend = function() {
+                isSpeaking = false;
+                // Process next item in queue after a small delay
+                setTimeout(processSpeechQueue, 100);
+            };
+            utterance.onerror = function(event) {
+            console.error('Speech synthesis error:', event);
+            isSpeaking = false;
+            // Try next item in queue
+            setTimeout(processSpeechQueue, 100);
+        };
+        
+            try {
+                speechSynthesis.speak(utterance);
+            } catch (error) {
+                console.error('Failed to speak:', error);
+                isSpeaking = false;
+                setTimeout(processSpeechQueue, 100);
+            }
+        }
+
+        // Enhanced audio unlocking - call this on ANY user interaction
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            
+            console.log('Attempting to unlock audio...');
+            
+            // Create and load the alarm audio
+            alarmAudio = new Audio('/static/alarm.mp3');
+            alarmAudio.load();
+            
+            // Also try to initialize speech synthesis
+            try {
+                const utterance = new SpeechSynthesisUtterance('');
+                utterance.volume = 0;
+                speechSynthesis.speak(utterance);
+                speechSynthesis.cancel();
+                console.log('Speech synthesis initialized');
+                audioUnlocked = true;
+            } catch (error) {
+                console.log('Speech synthesis init failed:', error);
+            }
         }
 
         function startPlanningTimer() {
             if (isPlanningActive) return;
-            
+
+            unlockAudio();
             // Determine planning time: 2 minutes for iteration 1, 1 minute for others
             planningTimeRemaining = currentIteration === 1 ? 120 : 60;
             isPlanningActive = true;
@@ -873,19 +935,7 @@
             const maxTime = currentIteration === 1 ? 120 : 60;
             
             // Voice announcements for planning timer
-            if (planningTimeRemaining === 60 && !alertsPlayed.has(60)) {
-                speak("One minute remaining");
-                alertsPlayed.add(60);
-            } else if (planningTimeRemaining === 45 && !alertsPlayed.has(45)) {
-                speak("Forty five seconds");
-                alertsPlayed.add(45);
-            } else if (planningTimeRemaining === 30 && !alertsPlayed.has(30)) {
-                speak("Thirty seconds");
-                alertsPlayed.add(30);
-            } else if (planningTimeRemaining === 15 && !alertsPlayed.has(15)) {
-                speak("Fifteen seconds");
-                alertsPlayed.add(15);
-            } else if (planningTimeRemaining === 10 && !alertsPlayed.has(10)) {
+            if (planningTimeRemaining === 10 && !alertsPlayed.has(10)) {
                 speak("Ten");
                 alertsPlayed.add(10);
             } else if (planningTimeRemaining === 9 && !alertsPlayed.has(9)) {
@@ -990,7 +1040,8 @@
             if (isRunning) return;
             
             console.log('Starting iteration:', currentIteration);
-            
+            unlockAudio();  
+
             // Reset alerts tracking for new iteration
             alertsPlayed.clear();
             
@@ -1027,6 +1078,21 @@
             // Initialize actual count in table
             updateTableCell(currentIteration, 3, 0, 'live-value');
         }
+        // Add early audio unlocking on page interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Unlock audio on any click anywhere on the page
+            document.addEventListener('click', unlockAudio, { once: false });
+            
+            // Also try to unlock on any button click
+            document.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', unlockAudio);
+            });
+            
+            // Unlock on any input interaction
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('focus', unlockAudio, { once: true });
+            });
+        });
 
         function updateTimer() {
             // Decrement time first
@@ -1080,7 +1146,26 @@
             // Check if time is up
             if (timeRemaining < 0) {
                 console.log('Timer finished, stopping iteration');
-                speak("Time's up");
+
+                // Play the alarm with multiple fallback attempts
+                if (alarmAudio) {
+                    alarmAudio.currentTime = 0; // Reset to start
+                    alarmAudio.play().catch(error => {
+                        console.log('First alarm playback attempt failed:', error);
+                        // Try creating a fresh audio object as fallback
+                        const fallbackAlarm = new Audio('/static/alarm.mp3');
+                        fallbackAlarm.play().catch(err => {
+                            console.log('Fallback alarm playback also failed:', err);
+                        });
+                    });
+                } else {
+                    // If alarmAudio wasn't initialized, try to play anyway
+                    const emergencyAlarm = new Audio('/static/alarm.mp3');
+                    emergencyAlarm.play().catch(error => {
+                        console.log('Emergency alarm playback failed:', error);
+                    });
+                }
+                
                 stopIteration();
                 return;
             }
@@ -1118,6 +1203,10 @@
         function stopIteration() {
             isRunning = false;
             clearInterval(timerInterval);
+
+            // Clear speech queue
+            speechQueue = [];
+            isSpeaking = false;
             
             if (eventSource) {
                 eventSource.close();

@@ -3,9 +3,42 @@ from flask import Flask, render_template, request, jsonify, Response, stream_wit
 import serial
 import time
 import os
+import queue
 from datetime import datetime
 import threading
-import random
+
+# ===== GPIO setup =====
+# sudo apt-get update
+#sudo apt-get install python3-pip
+
+GPIO_OK = True
+
+try:
+
+    from gpiozero import Device, Button
+
+    # Prefer LGPIO on Bookworm; fallback to RPi.GPIO if LGPIO missing
+
+    try:
+        from gpiozero.pins.lgpio import LGPIOFactory
+        Device.pin_factory = LGPIOFactory()
+        print("GPIOZero: using LGPIOFactory")
+
+    except Exception as e:
+        print("LGPIOFactory not available:", e)
+        from gpiozero.pins.rpigpio import RPiGPIOFactory
+        Device.pin_factory = RPiGPIOFactory()
+        print("GPIOZero: using RPiGPIOFactory")
+
+except Exception as e:
+    print("gpiozero not available:", e)
+    GPIO_OK = False
+    Button = None
+
+SW_PIN = 17
+DEBOUNCE = 0.02  # 20 ms
+
+# =============================================================
 
 app = Flask(__name__)
 
@@ -18,48 +51,20 @@ state = {
     "iterations_data": []
 }
 
+state_lock = threading.Lock()
+# Queue used to push live counts to SSE clients
+updates_q = queue.Queue()
+
+# No-op to keep earlier call
+
 def reset_arduino():
-    """Reset Arduino counter to 0"""
-    ############################### WITHOUT ARDUINO ########################################
-    print("Arduino reset skipped - no hardware connected")
-    state["ball_count"] = 0
+    pass
+# Will be set in __main__
+button = None
 
-    ############################### WITH ARDUINO ########################################
-    # try:
-    #     arduino = serial.Serial(port='/dev/ttyACM0', baudrate=9600, timeout=0.5)
-    #     time.sleep(0.5)
-    #     arduino.write(b'r')
-        
-    #     # Wait for confirmation
-    #     deadline = time.time() + 0.5
-    #     while time.time() < deadline:
-    #         response = arduino.readline().decode().strip()
-    #         if "Counter reset to 0" in response:
-    #             break
-        
-    #     state["ball_count"] = 0
-    #     arduino.close()
-    # except serial.SerialException as e:
-    #     print(f"Error: {e}")
-
-def get_arduino_connection():
-    """Get Arduino serial connection"""
-    ############################### WITHOUT ARDUINO ########################################
-    print("Arduino connection skipped - no hardware connected")
-    return None
-
-    ############################### WITH ARDUINO ########################################
-    # try:
-    #     arduino = serial.Serial(port='/dev/ttyACM0', baudrate=9600, timeout=1)
-    #     time.sleep(2)
-    #     return arduino
-    # except Exception as e:
-    #     print(f"Error connecting to Arduino: {e}")
-    #     return None
 
 @app.route('/')
 def dashboard():
-    """Main dashboard with table view"""
     return render_template('dashboard.html', 
                          current_iteration=state["current_iteration"],
                          plan_number=state["plan_number"],
@@ -84,7 +89,17 @@ def start_iteration():
     # Start counting
     state["is_counting"] = True
     state["ball_count"] = 0
+      
+    # clear stale updates, then push initial 
+    while not updates_q.empty():
+        try: 
+            updates_q.get_nowait()
+        except queue.Empty: 
+            break
+    updates_q.put(0)
+
     
+
     return jsonify({
         "success": True, 
         "iteration": state["current_iteration"]
@@ -94,7 +109,7 @@ def start_iteration():
 def stop_iteration():
     """Stop the current iteration"""
     state["is_counting"] = False
-    
+
     return jsonify({
         "success": True,
         "final_count": state["ball_count"]
@@ -106,11 +121,11 @@ def submit_defects():
     defects = request.json.get('defects', 0)
     actual = state["ball_count"]
     plan = state["plan_number"]
-    
+
     # Calculate results
     total = actual - defects
-    delta = total - plan
-    
+    delta = total - plan 
+
     # Store iteration data
     iteration_data = {
         "iteration": state["current_iteration"],
@@ -121,13 +136,13 @@ def submit_defects():
         "delta": delta,
         "timestamp": datetime.now().isoformat()
     }
-    
-    state["iterations_data"].append(iteration_data)
-    
-    # Move to next iteration
-    if state["current_iteration"] < 5:
-        state["current_iteration"] += 1
-    
+
+    with state_lock:
+        state["iterations_data"].append(iteration_data)
+
+        if state["current_iteration"] < 5:
+            state["current_iteration"] += 1
+
     return jsonify({
         "success": True,
         "iteration_data": iteration_data,
@@ -151,25 +166,28 @@ def get_final_results():
 
 @app.route('/live_counter')
 def live_counter():
-    """Server-sent events for live ball counting"""
-    ############################### WITHOUT ARDUINO ########################################
+    """SSE stream that emits the latest count whenever it changes."""
+
+    @stream_with_context
     def stream():
-        # Simulate ball counting without Arduino
-        print("Starting live counter stream")
-        count = 0
-        
-        while state["is_counting"]:
-            time.sleep(random.uniform(1.0, 3.0))  # Random interval between balls
-            
-            if state["is_counting"]:  # Check if still counting
-                count += random.randint(1, 2)  # Add 1-2 balls
-                state["ball_count"] = count
-                print(f"Simulated ball count: {count}")
-                yield f"data: {count}\n\n"
-        
-        print("Live counter stream ended")
-    
-    return Response(stream_with_context(stream()), mimetype="text/event-stream")
+        yield "event: hello\ndata: connected\n\n"
+        while True:
+            # if not counting, send idle pings so the connection stays up
+            with state_lock:
+                counting = state["is_counting"]
+
+            if not counting:
+                time.sleep(1.0)
+                yield "event: status\ndata: idle\n\n"
+                continue
+
+            try:
+                cnt = updates_q.get(timeout=15.0)
+                yield f"data: {cnt}\n\n"
+
+            except queue.Empty:
+                yield "event: ping\ndata: keep-alive\n\n"
+    return Response(stream(), mimetype="text/event-stream")
 
     ############################### WITH ARDUINO ########################################
     # def stream():
@@ -185,7 +203,6 @@ def live_counter():
     #             print(f"Error in live counter: {e}")
     #         finally:
     #             arduino.close()
-    
     # return Response(stream_with_context(stream()), mimetype="text/event-stream")
 
 @app.route('/reset_system', methods=['POST'])
@@ -195,11 +212,42 @@ def reset_system():
     state["plan_number"] = 0
     state["ball_count"] = 0
     state["is_counting"] = False
-    state["iterations_data"] = []
-    
+    state["iterations_data"] = [] 
     return jsonify({"success": True})
 
+# ========= Initialization called once ==========================
+def init_gpio_once():
+    """Create Button and attach the same on_press pattern as your test script."""
+    global button
+
+    if not GPIO_OK:
+        print("GPIO not available; running web app without hardware.")
+        return
+
+    def on_press():
+        with state_lock:
+            if not state["is_counting"]:
+                return
+
+            state["ball_count"] += 1
+            new_cnt = state["ball_count"]
+        updates_q.put(new_cnt)  # push to SSE listeners
+
+        print(f"Count: {new_cnt}")
+
+    button = Button(SW_PIN, pull_up=True, bounce_time=DEBOUNCE)
+    button.when_pressed = on_press
+    print("GPIO17 initialized with pull_up=True, debounce=20ms")
+
+#====================================================
+
 if __name__ == '__main__':
+    try:
+        init_gpio_once()
+
+    except Exception as e:
+        print("Failed to init GPIO17:", e)
     print("Starting Agile Game Server...")
     print("Access the game at: http://localhost:5000")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
