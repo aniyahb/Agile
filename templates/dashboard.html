@@ -821,6 +821,7 @@
     </div>
 
     <script>
+    // ===================================================== JavaScript Code ============================================================================
         // Global variables
         let currentIteration = 1;
         let planNumber = 0;
@@ -851,35 +852,35 @@
             }
             isSpeaking = true;
             const text = speechQueue.shift();
-            
+
             // Cancel any ongoing speech
             speechSynthesis.cancel();
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            utterance.pitch = 0.5;
-            utterance.volume = 1.0;
-            
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 1.0;
+                    utterance.pitch = 0.5;
+                    utterance.volume = 1.0;
+
             utterance.onend = function() {
-                isSpeaking = false;
+                        isSpeaking = false;
                 // Process next item in queue after a small delay
-                setTimeout(processSpeechQueue, 100);
-            };
+                        setTimeout(processSpeechQueue, 100);
+                    };
             utterance.onerror = function(event) {
             console.error('Speech synthesis error:', event);
-            isSpeaking = false;
+                        isSpeaking = false;
             // Try next item in queue
             setTimeout(processSpeechQueue, 100);
-        };
-        
+                    };
+
             try {
-                speechSynthesis.speak(utterance);
+                    speechSynthesis.speak(utterance);
             } catch (error) {
                 console.error('Failed to speak:', error);
-                isSpeaking = false;
+                    isSpeaking = false;
                 setTimeout(processSpeechQueue, 100);
+                }
             }
-        }
 
         // Enhanced audio unlocking - call this on ANY user interaction
         function unlockAudio() {
@@ -934,43 +935,19 @@
             // Get max time for progress calculation
             const maxTime = currentIteration === 1 ? 120 : 60;
             
-            // Voice announcements for planning timer
-            if (planningTimeRemaining === 10 && !alertsPlayed.has(10)) {
-                speak("Ten");
-                alertsPlayed.add(10);
-            } else if (planningTimeRemaining === 9 && !alertsPlayed.has(9)) {
-                speak("Nine");
-                alertsPlayed.add(9);
-            } else if (planningTimeRemaining === 8 && !alertsPlayed.has(8)) {
-                speak("Eight");
-                alertsPlayed.add(8);
-            } else if (planningTimeRemaining === 7 && !alertsPlayed.has(7)) {
-                speak("Seven");
-                alertsPlayed.add(7);
-            } else if (planningTimeRemaining === 6 && !alertsPlayed.has(6)) {
-                speak("Six");
-                alertsPlayed.add(6);
-            } else if (planningTimeRemaining === 5 && !alertsPlayed.has(5)) {
-                speak("Five");
-                alertsPlayed.add(5);
-            } else if (planningTimeRemaining === 4 && !alertsPlayed.has(4)) {
-                speak("Four");
-                alertsPlayed.add(4);
-            } else if (planningTimeRemaining === 3 && !alertsPlayed.has(3)) {
-                speak("Three");
-                alertsPlayed.add(3);
-            } else if (planningTimeRemaining === 2 && !alertsPlayed.has(2)) {
-                speak("Two");
-                alertsPlayed.add(2);
-            } else if (planningTimeRemaining === 1 && !alertsPlayed.has(1)) {
-                speak("One");
-                alertsPlayed.add(1);
+            // Start countdown audio at 10 seconds
+            if (planningTimeRemaining === 10) {
+                const countdownAudio = new Audio('/static/counts/ten_sec_countdown.mp3');
+                countdownAudio.play().catch(error => {
+                    console.log('Countdown audio playback failed:', error);
+                });
             }
             
             // Check if time is up
             if (planningTimeRemaining < 0) {
                 clearInterval(planningTimerInterval);
-                speak("Time's up. Please enter your plan.");
+                const audio = new Audio('/static/times_up_enter_plan.mp3');
+                audio.play().catch(error => console.log('Audio playback failed:', error));
                 
                 // Force plan entry - disable submit button until they enter something
                 const planInput = document.getElementById('planningInput');
@@ -1098,49 +1075,27 @@
             // Decrement time first
             timeRemaining--;
             
-            // Voice announcements
+            // MP3 Announcements
             if (timeRemaining === 60 && !alertsPlayed.has(60)) {
-                speak("One minute remaining");
+                const audio = new Audio('/static/counts/one_minute_remaining.mp3');
+                audio.play().catch(error => console.log('Audio playback failed:', error));
                 alertsPlayed.add(60);
             } else if (timeRemaining === 45 && !alertsPlayed.has(45)) {
-                speak("Forty five seconds");
+                const audio = new Audio('/static/counts/45_secs.mp3');
+                audio.play().catch(error => console.log('Audio playback failed:', error));
                 alertsPlayed.add(45);
             } else if (timeRemaining === 30 && !alertsPlayed.has(30)) {
-                speak("Thirty seconds");
+                const audio = new Audio('/static/counts/30_secs.mp3');
+                audio.play().catch(error => console.log('Audio playback failed:', error));
                 alertsPlayed.add(30);
             } else if (timeRemaining === 15 && !alertsPlayed.has(15)) {
-                speak("Fifteen seconds");
+                const audio = new Audio('/static/counts/15_secs.mp3');
+                audio.play().catch(error => console.log('Audio playback failed:', error));
                 alertsPlayed.add(15);
             } else if (timeRemaining === 10 && !alertsPlayed.has(10)) {
-                speak("Ten");
+                const audio = new Audio('/static/counts/ten_sec_countdown.mp3');
+                audio.play().catch(error => console.log('Audio playback failed:', error));
                 alertsPlayed.add(10);
-            } else if (timeRemaining === 9 && !alertsPlayed.has(9)) {
-                speak("Nine");
-                alertsPlayed.add(9);
-            } else if (timeRemaining === 8 && !alertsPlayed.has(8)) {
-                speak("Eight");
-                alertsPlayed.add(8);
-            } else if (timeRemaining === 7 && !alertsPlayed.has(7)) {
-                speak("Seven");
-                alertsPlayed.add(7);
-            } else if (timeRemaining === 6 && !alertsPlayed.has(6)) {
-                speak("Six");
-                alertsPlayed.add(6);
-            } else if (timeRemaining === 5 && !alertsPlayed.has(5)) {
-                speak("Five");
-                alertsPlayed.add(5);
-            } else if (timeRemaining === 4 && !alertsPlayed.has(4)) {
-                speak("Four");
-                alertsPlayed.add(4);
-            } else if (timeRemaining === 3 && !alertsPlayed.has(3)) {
-                speak("Three");
-                alertsPlayed.add(3);
-            } else if (timeRemaining === 2 && !alertsPlayed.has(2)) {
-                speak("Two");
-                alertsPlayed.add(2);
-            } else if (timeRemaining === 1 && !alertsPlayed.has(1)) {
-                speak("One");
-                alertsPlayed.add(1);
             }
             
             // Check if time is up
