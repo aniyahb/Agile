@@ -536,24 +536,49 @@
 
         .planning-modal-content {
             background: linear-gradient(135deg, #d34c9f 0%, #ca5f8d 100%);
-            margin: 10% auto;
-            padding: 50px;
-            border-radius: 30px;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
             width: 90%;
             max-width: 600px;
             text-align: center;
             box-shadow: 0 30px 80px rgba(0,0,0,0.5);
-            animation: modalSlideIn 0.3s ease;
+            animation: modalSlideIn 0.25s ease;
             color: white;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        /* Make the internal scrollbar subtle and match the modal */
+        .planning-modal-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .planning-modal-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .planning-modal-content::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        /* Firefox scrollbar styling */
+        .planning-modal-content {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.12) transparent;
         }
 
         .planning-timer {
-            font-size: 10em;
+            font-size: clamp(3em, 10vw, 7em);
             font-weight: bold;
-            text-shadow: 0 5px 30px rgba(0,0,0,0.5);
-            margin: 30px 0;
+            text-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            margin: 20px 0;
             font-family: 'Courier New', monospace;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
+            line-height: 1;
         }
 
         .planning-progress {
@@ -627,6 +652,94 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        /* Touch-friendly increment/decrement controls */
+        .touch-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .touch-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .touch-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            min-width: 80px;
+            user-select: none;
+        }
+
+        .touch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .touch-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .touch-btn.subtract {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+
+        .touch-btn.add {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .number-display {
+            background: rgba(255,255,255,0.9);
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 20px 30px;
+            font-size: 3em;
+            font-weight: bold;
+            color: #333;
+            min-width: 150px;
+            text-align: center;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .planning-number-display {
+            background: rgba(255,255,255,0.9);
+            border: 3px solid white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            min-width: 150px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Hide the default input but keep it for keyboard input */
+        .hidden-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .keyboard-hint {
+            margin-top: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -647,6 +760,9 @@
                 <button class="btn" id="startBtn" onclick="startIteration()" disabled>
                     Start 2-Minute Counting
                 </button>
+                <button class="btn" id="viewResultsBtn" onclick="showFinalResults()" disabled>
+                    View Final Results
+                </button>
                 <button class="btn btn-danger" onclick="resetSystem()">Reset System</button>
             </div>
             
@@ -657,7 +773,7 @@
 
         <!-- Main Results Table -->
         <div class="main-table-container">
-            <div class="table-title">Results (5 Iterations)</div>
+            <div class="table-title">Results </div>
             
             <table class="main-table">
                 <thead>
@@ -668,11 +784,13 @@
                         <th>Defects</th>
                         <th>Total</th>
                         <th>Delta</th>
+                        <th>Score</th>
                     </tr>
                 </thead>
                 <tbody id="mainTableBody">
                     <tr id="row-1">
                         <td>1</td>
+                        <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
@@ -686,9 +804,11 @@
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
                     </tr>
                     <tr id="row-3">
                         <td>3</td>
+                        <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
@@ -702,9 +822,11 @@
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
+                        <td class="empty-cell">-</td>
                     </tr>
                     <tr id="row-5">
                         <td>5</td>
+                        <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
                         <td class="empty-cell">-</td>
@@ -719,14 +841,32 @@
     <!-- Planning Timer Modal -->
     <div id="planningModal" class="planning-modal">
         <div class="planning-modal-content">
-            <h2 style="font-size: 2.5em; margin-bottom: 20px;">Planning Phase - Iteration <span id="planningIterationNum">1</span></h2>
+            <h2 style="font-size: 2.0em; margin-bottom: 20px;">Planning Phase - Iteration <span id="planningIterationNum">1</span></h2>
             <div class="planning-timer" id="planningTimer">2:00</div>
             <div class="planning-progress">
                 <div class="planning-progress-fill" id="planningProgressBar"></div>
             </div>
             <div class="planning-input-group">
                 <label for="planningInput">Enter Your Plan:</label>
-                <input type="number" id="planningInput" placeholder="0" min="1" autofocus>
+               
+                <!-- Touch Controls -->
+                <div class="touch-controls">
+                    <div class="touch-btn-group">
+                        <button type="button" class="touch-btn subtract" onclick="adjustPlan(-10)">-10</button>
+                        <button type="button" class="touch-btn subtract" onclick="adjustPlan(-5)">-5</button>
+                        <button type="button" class="touch-btn subtract" onclick="adjustPlan(-1)">-1</button>
+                    </div>
+                    
+                    <div class="planning-number-display" id="planningDisplay">0</div>
+                    
+                    <div class="touch-btn-group">
+                        <button type="button" class="touch-btn add" onclick="adjustPlan(10)">+10</button>
+                        <button type="button" class="touch-btn add" onclick="adjustPlan(5)">+5</button>
+                        <button type="button" class="touch-btn add" onclick="adjustPlan(1)">+1</button>
+                    </div>
+                </div>                
+                <!-- Hidden input for keyboard entry -->
+                <input type="number" id="planningInput" class="hidden-input" placeholder="0" min="1">
             </div>
             <button class="planning-submit-btn" onclick="submitPlan()">Submit Plan</button>
         </div>
@@ -769,9 +909,27 @@
         <div class="modal-content">
             <h2>Game Complete!</h2>
             <p>Iteration <span id="modalIteration">1</span> finished. How many defects were found in this batch?</p>
-            <div class="defects-input-group">
-                <input type="number" id="defectsInput" placeholder="Enter defects count" min="0" value="0">
+            
+            <!-- Touch Controls -->
+            <div class="touch-controls">
+                <div class="touch-btn-group">
+                    <button type="button" class="touch-btn subtract" onclick="adjustDefects(-10)">-10</button>
+                    <button type="button" class="touch-btn subtract" onclick="adjustDefects(-5)">-5</button>
+                    <button type="button" class="touch-btn subtract" onclick="adjustDefects(-1)">-1</button>
+                </div>
+                
+                <div class="number-display" id="defectsDisplay">0</div>
+                
+                <div class="touch-btn-group">
+                    <button type="button" class="touch-btn add" onclick="adjustDefects(10)">+10</button>
+                    <button type="button" class="touch-btn add" onclick="adjustDefects(5)">+5</button>
+                    <button type="button" class="touch-btn add" onclick="adjustDefects(1)">+1</button>
+                </div>
             </div>
+        
+            <!-- Hidden input for keyboard entry -->
+            <input type="number" id="defectsInput" class="hidden-input" placeholder="0" min="0" value="0">
+            
             <button class="btn" onclick="submitDefects()">Submit & Continue</button>
         </div>
     </div>
@@ -839,6 +997,8 @@
 
         let speechQueue = [];
         let isSpeaking = false;
+    // Chart instance for final results modal (destroy/recreate when reopened)
+    let resultsChart = null;
 
         // Text-to-speech function
         function speak(text) {
@@ -905,6 +1065,32 @@
             }
         }
 
+        // Touch control functions for Planning
+        function adjustPlan(amount) {
+            const input = document.getElementById('planningInput');
+            const display = document.getElementById('planningDisplay');
+            let currentValue = parseInt(input.value) || 0;
+            let newValue = Math.max(0, currentValue + amount);
+            
+            input.value = newValue;
+            display.textContent = newValue;
+            
+            // Update submit button state
+            const submitBtn = document.querySelector('.planning-submit-btn');
+            submitBtn.disabled = newValue <= 0;
+        }
+
+        // Touch control functions for Defects
+        function adjustDefects(amount) {
+            const input = document.getElementById('defectsInput');
+            const display = document.getElementById('defectsDisplay');
+            let currentValue = parseInt(input.value) || 0;
+            let newValue = Math.max(0, currentValue + amount);
+            
+            input.value = newValue;
+            display.textContent = newValue;
+        }
+
         function startPlanningTimer() {
             if (isPlanningActive) return;
 
@@ -917,10 +1103,20 @@
             // Show planning modal
             document.getElementById('planningModal').style.display = 'block';
             document.getElementById('planningIterationNum').textContent = currentIteration;
-            document.getElementById('planningInput').value = '';
-            document.getElementById('planningInput').focus();
+
+            // Reset planning input and visible display so previous value isn't carried over
+            const planningInput = document.getElementById('planningInput');
+            const planningDisplay = document.getElementById('planningDisplay');
+            const submitBtn = document.querySelector('.planning-submit-btn');
+            planningInput.value = '';               // clear raw input
+            planningDisplay.textContent = '0';      // visible display resets to 0
+            submitBtn.disabled = true;              // require new valid entry
+            // trigger input listener to keep UI in sync (if any)
+            planningInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+            planningInput.focus();
             
-            // Disable planning button
+            // Disable planning button while planning is active
             document.getElementById('planningBtn').disabled = true;
             
             // Start planning timer
@@ -1069,6 +1265,32 @@
             document.querySelectorAll('input').forEach(input => {
                 input.addEventListener('focus', unlockAudio, { once: true });
             });
+
+            // Sync display with keyboard input for Planning
+            const planningInput = document.getElementById('planningInput');
+            const planningDisplay = document.getElementById('planningDisplay');
+            
+            planningInput.addEventListener('input', function() {
+                let value = parseInt(this.value) || 0;
+                if (value < 0) value = 0;
+                this.value = value;
+                planningDisplay.textContent = value;
+                
+                const submitBtn = document.querySelector('.planning-submit-btn');
+                submitBtn.disabled = value <= 0;
+            });
+            
+            // Sync for Defects
+            const defectsInput = document.getElementById('defectsInput');
+            const defectsDisplay = document.getElementById('defectsDisplay');
+            
+            defectsInput.addEventListener('input', function() {
+                let value = parseInt(this.value) || 0;
+                if (value < 0) value = 0;
+                this.value = value;
+                defectsDisplay.textContent = value;
+            });
+            
         });
 
         function updateTimer() {
@@ -1185,13 +1407,20 @@
             
             // Show defects input modal
             document.getElementById('modalIteration').textContent = currentIteration;
+
+            // Reset defects input and visible display to 0 to avoid carrying previous value
+            const defectsInput = document.getElementById('defectsInput');
+            const defectsDisplay = document.getElementById('defectsDisplay');
+            if (defectsInput) defectsInput.value = '0';
+            if (defectsDisplay) defectsDisplay.textContent = '0';
+            
             document.getElementById('defectsModal').style.display = 'block';
         }
 
         function submitDefects() {
             const defectsInput = document.getElementById('defectsInput');
             const defects = parseInt(defectsInput.value) || 0;
-            
+
             // Remember which iteration we just completed
             const completedIteration = currentIteration;
             
@@ -1225,6 +1454,9 @@
                 if (completedIteration === 5) {
                     // All 5 iterations complete - show final results graph
                     showFinalResults();
+                    // enable the View Final Results button so the modal can be reopened
+                    const viewBtn = document.getElementById('viewResultsBtn');
+                    if (viewBtn) viewBtn.disabled = false;
                 } else {
                     // Prepare for next iteration - enable planning button
                     document.getElementById('planningBtn').disabled = false;
@@ -1272,12 +1504,17 @@
 
         function createResultsChart(iterations) {
             const ctx = document.getElementById('resultsChart').getContext('2d');
-            
+            // Destroy previous chart instance if present to avoid duplicates when reopening modal
+            if (resultsChart) {
+                try { resultsChart.destroy(); } catch (e) { /* ignore */ }
+                resultsChart = null;
+            }
+
             const labels = iterations.map(iter => `Iteration ${iter.iteration}`);
             const planData = iterations.map(iter => iter.plan);
             const actualData = iterations.map(iter => iter.actual);
-            
-            new Chart(ctx, {
+
+            resultsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -1310,7 +1547,7 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false // We have custom legend
+                            display: false 
                         },
                         title: {
                             display: true,
@@ -1504,6 +1741,9 @@
                 document.getElementById('startBtn').textContent = 'Process Complete';
                 document.getElementById('startBtn').disabled = true;
                 document.getElementById('planningBtn').disabled = true;
+                // enable the View Final Results button on load if the game is already complete
+                const viewBtn = document.getElementById('viewResultsBtn');
+                if (viewBtn) viewBtn.disabled = false;
             }
         };
     </script>

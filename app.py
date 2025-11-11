@@ -7,10 +7,6 @@ import queue
 from datetime import datetime
 import threading
 
-# ===== GPIO setup =====
-# sudo apt-get update
-#sudo apt-get install python3-pip
-
 GPIO_OK = True
 
 try:
@@ -119,6 +115,7 @@ def stop_iteration():
 def submit_defects():
     """Submit defects and calculate results"""
     defects = request.json.get('defects', 0)
+    in_progress = request.json.get('in_progress', 0)  
     actual = state["ball_count"]
     plan = state["plan_number"]
 
@@ -188,22 +185,6 @@ def live_counter():
             except queue.Empty:
                 yield "event: ping\ndata: keep-alive\n\n"
     return Response(stream(), mimetype="text/event-stream")
-
-    ############################### WITH ARDUINO ########################################
-    # def stream():
-    #     arduino = get_arduino_connection()
-    #     if arduino:
-    #         try:
-    #             while state["is_counting"]:
-    #                 response = arduino.readline().decode().strip()
-    #                 if response.isdigit():
-    #                     state["ball_count"] = int(response)
-    #                     yield f"data: {response}\n\n"
-    #         except Exception as e:
-    #             print(f"Error in live counter: {e}")
-    #         finally:
-    #             arduino.close()
-    # return Response(stream_with_context(stream()), mimetype="text/event-stream")
 
 @app.route('/reset_system', methods=['POST'])
 def reset_system():
