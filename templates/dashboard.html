@@ -260,6 +260,11 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
+        /* Separate animation for centered modals */
+        @keyframes modalSlideInCentered {
+            from { transform: translate(-50%, -50%) translateY(-50px); opacity: 0; }
+            to { transform: translate(-50%, -50%) translateY(0); opacity: 1; }
+        }
         .modal h2 {
             color: #333;
             margin-bottom: 20px;
@@ -740,9 +745,109 @@
             opacity: 0.8;
             font-style: italic;
         }
+
+        /* *** NEW: Initial Players Setup Overlay Styles *** */
+        .players-setup-overlay {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            backdrop-filter: blur(10px);
+        }
+
+        .players-setup-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+            animation: modalSlideInCentered 0.5s ease; 
+            min-width: 500px;
+        }
+
+        .players-setup-title {
+            font-size: 3.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 40px;
+            text-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .players-setup-label {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .players-setup-submit {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            border-radius: 30px;
+            font-size: 1.8em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+
+        .players-setup-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .players-setup-submit:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
+    <!-- *** NEW: Initial Players Setup Overlay *** -->
+    <div id="playersSetupOverlay" class="players-setup-overlay">
+        <div class="players-setup-content">
+            <div class="players-setup-title">Electronic Agile Game</div>
+            <div class="players-setup-label">Enter the Number of Players:</div>
+            
+            <!-- Touch Controls for Players -->
+            <div class="touch-controls">
+                <div class="touch-btn-group">
+                    <button type="button" class="touch-btn subtract" onclick="adjustPlayersSetup(-10)">-10</button>
+                    <button type="button" class="touch-btn subtract" onclick="adjustPlayersSetup(-5)">-5</button>
+                    <button type="button" class="touch-btn subtract" onclick="adjustPlayersSetup(-1)">-1</button>
+                </div>
+                
+                <div class="number-display" id="playersSetupDisplay">0</div>
+                
+                <div class="touch-btn-group">
+                    <button type="button" class="touch-btn add" onclick="adjustPlayersSetup(10)">+10</button>
+                    <button type="button" class="touch-btn add" onclick="adjustPlayersSetup(5)">+5</button>
+                    <button type="button" class="touch-btn add" onclick="adjustPlayersSetup(1)">+1</button>
+                </div>
+            </div>
+            
+            <!-- Hidden input for keyboard entry -->
+            <input type="number" id="playersSetupInput" class="hidden-input" placeholder="0" min="1" value="0">
+            
+            <button class="players-setup-submit" id="playersSetupSubmit" onclick="submitPlayersSetup()" disabled>
+                Start Game
+            </button>
+        </div>
+    </div>
+
     <div class="container">
         <h1>Agile Game</h1>
         
@@ -957,6 +1062,7 @@
             <div class="results-summary">
                 <div class="summary-section">
                     <h3>Game Summary</h3>
+                    <p><strong>Number of Players:</strong> <span id="numPlayers">0</span></p> 
                     <p>Total Iterations: <strong>5</strong></p>
                     <p>Average Plan: <strong id="avgPlan">0</strong></p>
                     <p>Average Actual: <strong id="avgActual">0</strong></p>
@@ -997,8 +1103,57 @@
 
         let speechQueue = [];
         let isSpeaking = false;
-    // Chart instance for final results modal (destroy/recreate when reopened)
-    let resultsChart = null;
+
+        let resultsChart = null;
+
+        // *** NEW: Global variable for number of players ***
+        let numberOfPlayers = {{ number_of_players }};
+
+        // *** NEW: Touch control function for initial players setup ***
+        function adjustPlayersSetup(amount) {
+            const input = document.getElementById('playersSetupInput');
+            const display = document.getElementById('playersSetupDisplay');
+            let currentValue = parseInt(input.value) || 0;
+            let newValue = Math.max(0, currentValue + amount);
+            
+            input.value = newValue;
+            display.textContent = newValue;
+            
+            // Update submit button state
+            const submitBtn = document.getElementById('playersSetupSubmit');
+            submitBtn.disabled = newValue <= 0;
+        }
+
+        // *** NEW: Submit the number of players and start the game ***
+        function submitPlayersSetup() {
+            const input = document.getElementById('playersSetupInput');
+            const players = parseInt(input.value);
+            
+            if (!players || players <= 0) {
+                alert('Please enter a valid number of players greater than 0');
+                return;
+            }
+            
+            // Store locally
+            numberOfPlayers = players;
+            
+            // Send to backend
+            fetch('/set_players', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ players: players })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Players set:', data);
+                // Hide the overlay and show the dashboard
+                document.getElementById('playersSetupOverlay').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error setting players:', error);
+                alert('Failed to set number of players. Please try again.');
+            });
+        }
 
         // Text-to-speech function
         function speak(text) {
@@ -1633,6 +1788,7 @@
             const totalDelta = deltas.reduce((sum, delta) => sum + delta, 0);
             const accuracyRate = Math.round((iterations.filter(iter => Math.abs(iter.delta) <= 2).length / 5) * 100);
             
+            document.getElementById('numPlayers').textContent = numberOfPlayers;
             document.getElementById('avgPlan').textContent = avgPlan;
             document.getElementById('avgActual').textContent = avgActual;
             document.getElementById('totalDefects').textContent = totalDefects;
@@ -1703,8 +1859,34 @@
             }
         });
 
-        // Load existing data on page load
+       // Load existing data on page load
         window.onload = function() {
+            // *** NEW: Show players setup overlay if players not set yet ***
+            if (numberOfPlayers <= 0) {
+                document.getElementById('playersSetupOverlay').style.display = 'block';
+                
+                // Sync display with keyboard input for players setup
+                const playersInput = document.getElementById('playersSetupInput');
+                const playersDisplay = document.getElementById('playersSetupDisplay');
+                
+                playersInput.addEventListener('input', function() {
+                    let value = parseInt(this.value) || 0;
+                    if (value < 0) value = 0;
+                    this.value = value;
+                    playersDisplay.textContent = value;
+                    
+                    const submitBtn = document.getElementById('playersSetupSubmit');
+                    submitBtn.disabled = value <= 0;
+                });
+                
+                // Allow Enter key to submit
+                playersInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        submitPlayersSetup();
+                    }
+                });
+            }
+            
             // Set current iteration and plan if already set
             currentIteration = {{ current_iteration }};
             planNumber = {{ plan_number }};

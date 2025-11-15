@@ -44,7 +44,8 @@ state = {
     "plan_number": 0,
     "ball_count": 0,
     "is_counting": False,
-    "iterations_data": []
+    "iterations_data": [],
+    "number_of_players": 0
 }
 
 state_lock = threading.Lock()
@@ -64,7 +65,15 @@ def dashboard():
     return render_template('dashboard.html', 
                          current_iteration=state["current_iteration"],
                          plan_number=state["plan_number"],
-                         iterations_data=state["iterations_data"])
+                         iterations_data=state["iterations_data"],
+                         number_of_players=state["number_of_players"])
+
+@app.route('/set_players', methods=['POST'])
+def set_players():
+    """Set the number of players for the game"""
+    players = request.json.get('players', 0)
+    state["number_of_players"] = players
+    return jsonify({"success": True, "players": players})
 
 @app.route('/set_plan', methods=['POST'])
 def set_plan():
@@ -158,7 +167,8 @@ def get_final_results():
         "success": True,
         "iterations_data": state["iterations_data"],
         "total_iterations": len(state["iterations_data"]),
-        "game_complete": len(state["iterations_data"]) == 5
+        "game_complete": len(state["iterations_data"]) == 5,
+        "number_of_players": state["number_of_players"]
     })
 
 @app.route('/live_counter')
@@ -193,7 +203,8 @@ def reset_system():
     state["plan_number"] = 0
     state["ball_count"] = 0
     state["is_counting"] = False
-    state["iterations_data"] = [] 
+    state["iterations_data"] = []
+    state["number_of_players"] = 0 
     return jsonify({"success": True})
 
 # ========= Initialization called once ==========================
