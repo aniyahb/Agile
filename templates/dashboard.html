@@ -266,7 +266,7 @@
             to { transform: translate(-50%, -50%) translateY(0); opacity: 1; }
         }
         .modal h2 {
-            color: #333;
+           color: #333;
             margin-bottom: 20px;
             font-size: 1.8em;
         }
@@ -816,7 +816,7 @@
     </style>
 </head>
 <body>
-    <!-- *** NEW: Initial Players Setup Overlay *** -->
+    <!-- Initial Players Setup Overlay -->
     <div id="playersSetupOverlay" class="players-setup-overlay">
         <div class="players-setup-content">
             <div class="players-setup-title">Electronic Agile Game</div>
@@ -1039,6 +1039,37 @@
         </div>
     </div>
 
+    <!-- In-Progress Input Modal -->
+    <div id="inProgressModal" class="modal">
+        <div class="modal-content">
+            <h2>In-Progress Balls</h2>
+            <p>Iteration <span id="inProgressModalIteration">1</span>: How many balls are still in progress?</p>
+            
+            <!-- Touch Controls -->
+            <div class="touch-controls">
+                <div class="touch-btn-group">
+                    <button type="button" class="touch-btn subtract" onclick="adjustInProgress(-10)">-10</button>
+                    <button type="button" class="touch-btn subtract" onclick="adjustInProgress(-5)">-5</button>
+                    <button type="button" class="touch-btn subtract" onclick="adjustInProgress(-1)">-1</button>
+                </div>
+                
+                <div class="number-display" id="inProgressDisplay">0</div>
+                
+                <div class="touch-btn-group">
+                    <button type="button" class="touch-btn add" onclick="adjustInProgress(10)">+10</button>
+                    <button type="button" class="touch-btn add" onclick="adjustInProgress(5)">+5</button>
+                    <button type="button" class="touch-btn add" onclick="adjustInProgress(1)">+1</button>
+                </div>
+            </div>
+        
+            <!-- Hidden input for keyboard entry -->
+            <input type="number" id="inProgressInput" class="hidden-input" placeholder="0" min="0" value="0">
+            
+            <button class="btn" onclick="submitInProgress()">Submit & Continue</button>
+        </div>
+    </div>
+
+
     <!-- Final Results Chart Modal -->
     <div id="finalResultsModal" class="modal">
         <div class="modal-content modal-content-large">
@@ -1077,7 +1108,7 @@
                 </div>
             </div>
             
-            <div style="text-align: center; margin-top: 30px;">
+            <div style="text-align: center; margin-top: 15px;">
                 <button class="btn" onclick="closeResultsModal()">Close Results</button>
                 <button class="btn btn-danger" onclick="resetSystem()">Start New Game</button>
             </div>
@@ -1106,10 +1137,12 @@
 
         let resultsChart = null;
 
-        // *** NEW: Global variable for number of players ***
         let numberOfPlayers = {{ number_of_players }};
 
-        // *** NEW: Touch control function for initial players setup ***
+        let tempDefects = 0;
+        let tempCompletedIteration = 0;
+
+        // Touch control function for initial players setup ***
         function adjustPlayersSetup(amount) {
             const input = document.getElementById('playersSetupInput');
             const display = document.getElementById('playersSetupDisplay');
@@ -1124,7 +1157,7 @@
             submitBtn.disabled = newValue <= 0;
         }
 
-        // *** NEW: Submit the number of players and start the game ***
+        // Submit the number of players and start the game ***
         function submitPlayersSetup() {
             const input = document.getElementById('playersSetupInput');
             const players = parseInt(input.value);
@@ -1239,6 +1272,17 @@
         function adjustDefects(amount) {
             const input = document.getElementById('defectsInput');
             const display = document.getElementById('defectsDisplay');
+            let currentValue = parseInt(input.value) || 0;
+            let newValue = Math.max(0, currentValue + amount);
+            
+            input.value = newValue;
+            display.textContent = newValue;
+        }
+        
+        // Touch control functions for In-Progress 
+        function adjustInProgress(amount) {
+            const input = document.getElementById('inProgressInput');
+            const display = document.getElementById('inProgressDisplay');
             let currentValue = parseInt(input.value) || 0;
             let newValue = Math.max(0, currentValue + amount);
             
@@ -1445,6 +1489,17 @@
                 this.value = value;
                 defectsDisplay.textContent = value;
             });
+
+            // Sync for In-Progress 
+            const inProgressInput = document.getElementById('inProgressInput');
+            const inProgressDisplay = document.getElementById('inProgressDisplay');
+            
+            inProgressInput.addEventListener('input', function() {
+                let value = parseInt(this.value) || 0;
+                if (value < 0) value = 0;
+                this.value = value;
+                inProgressDisplay.textContent = value;
+            });
             
         });
 
@@ -1504,7 +1559,7 @@
             
             const minutes = Math.floor(timeRemaining / 60);
             const seconds = timeRemaining % 60;
-            const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')} `;
             
             console.log(`Timer: ${timeDisplay}, timeRemaining: ${timeRemaining}`);
             
@@ -1572,47 +1627,72 @@
             document.getElementById('defectsModal').style.display = 'block';
         }
 
+        // *** UPDATED: Now shows in-progress modal instead of sending to backend immediately ***
         function submitDefects() {
             const defectsInput = document.getElementById('defectsInput');
             const defects = parseInt(defectsInput.value) || 0;
 
-            // Remember which iteration we just completed
-            const completedIteration = currentIteration;
+            // Store defects and iteration temporarily
+            tempDefects = defects;
+            tempCompletedIteration = currentIteration;
             
-            // Send to backend
+            // Close defects modal
+            document.getElementById('defectsModal').style.display = 'none';
+            defectsInput.value = '0';
+            document.getElementById('defectsDisplay').textContent = '0';
+            
+            // Show in-progress modal
+            document.getElementById('inProgressModalIteration').textContent = tempCompletedIteration;
+            
+            // Reset in-progress input
+            const inProgressInput = document.getElementById('inProgressInput');
+            const inProgressDisplay = document.getElementById('inProgressDisplay');
+            inProgressInput.value = '0';
+            inProgressDisplay.textContent = '0';
+            
+            document.getElementById('inProgressModal').style.display = 'block';
+        }
+
+        // *** NEW: Submit in-progress and send both defects + in-progress to backend ***
+        function submitInProgress() {
+            const inProgressInput = document.getElementById('inProgressInput');
+            const inProgress = parseInt(inProgressInput.value) || 0;
+            
+            // Send both defects and in-progress to backend
             fetch('/submit_defects', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ defects: defects })
+                body: JSON.stringify({ 
+                    defects: tempDefects,
+                    in_progress: inProgress
+                })
             })
             .then(response => response.json())
             .then(data => {
                 const result = data.iteration_data;
                 
                 // Update table
-                updateTableCell(completedIteration, 4, result.defects); // Defects
-                updateTableCell(completedIteration, 5, result.total);   // Total
-                updateTableCell(completedIteration, 6, result.delta >= 0 ? `+${result.delta}` : result.delta, result.delta >= 0 ? 'positive' : 'negative'); // Delta
+                updateTableCell(tempCompletedIteration, 4, result.defects); // Defects
+                updateTableCell(tempCompletedIteration, 5, result.total);   // Total
+                updateTableCell(tempCompletedIteration, 6, result.delta >= 0 ? `+${result.delta}` : result.delta, result.delta >= 0 ? 'positive' : 'negative'); // Delta
                 
                 // Mark row as completed
-                document.getElementById(`row-${completedIteration}`).classList.remove('current-row');
-                document.getElementById(`row-${completedIteration}`).classList.add('iteration-complete');
+                document.getElementById(`row-${tempCompletedIteration}`).classList.remove('current-row');
+                document.getElementById(`row-${tempCompletedIteration}`).classList.add('iteration-complete');
                 
                 // Update current iteration
                 currentIteration = data.current_iteration;
                 
-                // Reset modal
-                document.getElementById('defectsModal').style.display = 'none';
-                defectsInput.value = '0';
+                // Close modal and reset
+                document.getElementById('inProgressModal').style.display = 'none';
+                inProgressInput.value = '0';
                 
-                // Enable View Results button after first iteration completes 
-                // *** NEW: Enable View Results button after first iteration completes ***
+                // Enable View Results button after first iteration completes
                 const viewBtn = document.getElementById('viewResultsBtn');
                 if (viewBtn) viewBtn.disabled = false;
                 
-                
                 // Check if we just completed iteration 5 (final iteration)
-                if (completedIteration === 5) {
+                if (tempCompletedIteration === 5) {
                     // All 5 iterations complete - show final results graph
                     showFinalResults();
                 } else {
@@ -1634,9 +1714,9 @@
                 const row = document.getElementById(`row-${i}`);
                 const cells = row.querySelectorAll('td');
                 
-                //  Check if iteration is complete (has data) 
-                const planText = cells[1].textContent.trim();
-                if (planText === '-' || planText === '') {
+                // Check if iteration is complete by looking at ACTUAL column, not PLAN 
+                const actualText = cells[2].textContent.trim();  
+                if (actualText === '-' || actualText === '') {
                     break; // Stop at first incomplete iteration
                 }
                 
@@ -1667,10 +1747,10 @@
             // Show the modal
             document.getElementById('finalResultsModal').style.display = 'block';
             
-            // *** MISSING: Create the chart ***
+            // Create the chart
             createResultsChart(iterations);
             
-            // *** MISSING: Update summary statistics ***
+            // Update summary statistics
             updateSummaryStats(iterations);
             
             // *** UPDATED: Only update UI if all 5 iterations complete ***
@@ -1868,13 +1948,9 @@
             document.getElementById('countingOverlay').style.display = 'none';
         }
 
-        // Close modal when clicking outside (not for planning modal - must complete)
+        // Close modal when clicking outside (not for planning, defects, in-progress modal - must complete)
         window.onclick = function(event) {
-            const defectsModal = document.getElementById('defectsModal');
             const resultsModal = document.getElementById('finalResultsModal');
-            if (event.target === defectsModal) {
-                defectsModal.style.display = 'none';
-            }
             if (event.target === resultsModal) {
                 resultsModal.style.display = 'none';
             }
@@ -1891,6 +1967,13 @@
         document.getElementById('defectsInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 submitDefects();
+            }
+        });
+
+        // NEW: Allow Enter key to submit in-progress 
+        document.getElementById('inProgressInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitInProgress();
             }
         });
 
