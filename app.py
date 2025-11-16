@@ -42,10 +42,15 @@ app = Flask(__name__)
 
 def save_iterations_to_csv():
     """
-    Save all iterations_data to a timestamped CSV file.
+    Save all iterations_data to a timestamped CSV file is the GAME RESULTS folder.
     """
+    results_folder = "GAME RESULTS"
+    if not os.path.exists(results_folder):
+        os.makedirs(results_folder)
+        print(f"Created folder: {results_folder}")
+
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"results_{ts}.csv"
+    filename = os.path.join(results_folder, f"results_{ts}.csv")
     fieldnames = [
         "iteration",
         "plan",
