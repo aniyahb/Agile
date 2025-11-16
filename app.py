@@ -6,6 +6,7 @@ import os
 import queue
 from datetime import datetime
 import threading
+import csv 
 
 GPIO_OK = True
 
@@ -23,6 +24,7 @@ try:
     except Exception as e:
         print("LGPIOFactory not available:", e)
         from gpiozero.pins.rpigpio import RPiGPIOFactory
+
         Device.pin_factory = RPiGPIOFactory()
         print("GPIOZero: using RPiGPIOFactory")
 
@@ -37,6 +39,32 @@ DEBOUNCE = 0.02  # 20 ms
 # =============================================================
 
 app = Flask(__name__)
+
+def save_iterations_to_csv():
+    """
+    Save all iterations_data to a timestamped CSV file.
+    """
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"results_{ts}.csv"
+    fieldnames = [
+        "iteration",
+        "plan",
+        "actual",
+        "defects",
+        "total",
+        "delta",
+        "timestamp",
+        "team_players",  
+    ]
+
+    with open(filename, "w", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in state["iterations_data"]:
+            writer.writerow(row)
+
+    print(f"Results saved to {filename}")
+    return filename
 
 # Simplified state for Agile Game
 state = {
@@ -140,15 +168,19 @@ def submit_defects():
         "defects": defects,
         "total": total,
         "delta": delta,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "team_players": state["number_of_players"],
     }
 
     with state_lock:
         state["iterations_data"].append(iteration_data)
+        game_complete = len(state["iterations_data"]) == 5
 
         if state["current_iteration"] < 5:
             state["current_iteration"] += 1
 
+    if game_complete:
+        save_iterations_to_csv()
     return jsonify({
         "success": True,
         "iteration_data": iteration_data,
@@ -197,6 +229,7 @@ def live_counter():
     return Response(stream(), mimetype="text/event-stream")
 
 @app.route('/reset_system', methods=['POST'])
+
 def reset_system():
     """Reset entire system"""
     state["current_iteration"] = 1

@@ -746,7 +746,7 @@
             font-style: italic;
         }
 
-        /* *** NEW: Initial Players Setup Overlay Styles *** */
+        /* Initial Players Setup Overlay Styles */
         .players-setup-overlay {
             display: none;
             position: fixed;
@@ -865,8 +865,8 @@
                 <button class="btn" id="startBtn" onclick="startIteration()" disabled>
                     Start 2-Minute Counting
                 </button>
-                <button class="btn" id="viewResultsBtn" onclick="showFinalResults()" disabled>
-                    View Final Results
+                <button class="btn" id="viewResultsBtn" onclick="showFinalResults()" disabled style="background: linear-gradient(45deg, #FF69B4, #FF1493);">
+                    View Results
                 </button>
                 <button class="btn btn-danger" onclick="resetSystem()">Reset System</button>
             </div>
@@ -1042,8 +1042,7 @@
     <!-- Final Results Chart Modal -->
     <div id="finalResultsModal" class="modal">
         <div class="modal-content modal-content-large">
-            <h2>🎉 Game Complete - Final Results</h2>
-            
+            <h2 id="resultsModalTitle">🎉 Game Complete - Final Results</h2> 
             <div class="chart-legend">
                 <div class="legend-item">
                     <div class="legend-color legend-plan"></div>
@@ -1063,6 +1062,7 @@
                 <div class="summary-section">
                     <h3>Game Summary</h3>
                     <p><strong>Number of Players:</strong> <span id="numPlayers">0</span></p> 
+                    <p>Completed Iterations: <strong id="completedIterations">0</strong></p> 
                     <p>Total Iterations: <strong>5</strong></p>
                     <p>Average Plan: <strong id="avgPlan">0</strong></p>
                     <p>Average Actual: <strong id="avgActual">0</strong></p>
@@ -1605,13 +1605,16 @@
                 document.getElementById('defectsModal').style.display = 'none';
                 defectsInput.value = '0';
                 
+                // Enable View Results button after first iteration completes 
+                // *** NEW: Enable View Results button after first iteration completes ***
+                const viewBtn = document.getElementById('viewResultsBtn');
+                if (viewBtn) viewBtn.disabled = false;
+                
+                
                 // Check if we just completed iteration 5 (final iteration)
                 if (completedIteration === 5) {
                     // All 5 iterations complete - show final results graph
                     showFinalResults();
-                    // enable the View Final Results button so the modal can be reopened
-                    const viewBtn = document.getElementById('viewResultsBtn');
-                    if (viewBtn) viewBtn.disabled = false;
                 } else {
                     // Prepare for next iteration - enable planning button
                     document.getElementById('planningBtn').disabled = false;
@@ -1625,11 +1628,18 @@
         }
 
         function showFinalResults() {
-            // Use existing table data - no backend call needed
+            // *** UPDATED: Only get completed iterations, not all 5 
             const iterations = [];
             for (let i = 1; i <= 5; i++) {
                 const row = document.getElementById(`row-${i}`);
                 const cells = row.querySelectorAll('td');
+                
+                //  Check if iteration is complete (has data) 
+                const planText = cells[1].textContent.trim();
+                if (planText === '-' || planText === '') {
+                    break; // Stop at first incomplete iteration
+                }
+                
                 iterations.push({
                     iteration: i,
                     plan: parseInt(cells[1].textContent) || 0,
@@ -1640,22 +1650,40 @@
                 });
             }
             
+            // *** NEW: Don't show chart if no iterations completed ***
+            if (iterations.length === 0) {
+                alert('No completed iterations yet!');
+                return;
+            }
+            
+            // *** NEW: Update modal title based on completion status ***
+            const modalTitle = document.getElementById('resultsModalTitle');
+            if (iterations.length === 5) {
+                modalTitle.textContent = '🎉 Game Complete - Final Results';
+            } else {
+                modalTitle.textContent = `📊 Current Results - ${iterations.length} of 5 Iterations Complete`;
+            }
+            
             // Show the modal
             document.getElementById('finalResultsModal').style.display = 'block';
             
-            // Create the chart
+            // *** MISSING: Create the chart ***
             createResultsChart(iterations);
             
-            // Update summary statistics
+            // *** MISSING: Update summary statistics ***
             updateSummaryStats(iterations);
             
-            // Update UI
-            document.getElementById('timerDisplay').innerHTML = 
-                'All 5 Iterations Complete! View Results Above <span class="status-indicator status-stopped"></span>';
-            document.getElementById('startBtn').textContent = 'Process Complete';
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('planningBtn').disabled = true;
+            // *** UPDATED: Only update UI if all 5 iterations complete ***
+            if (iterations.length === 5) {
+                document.getElementById('timerDisplay').innerHTML = 
+                    'All 5 Iterations Complete! View Results Above <span class="status-indicator status-stopped"></span>';
+                document.getElementById('startBtn').textContent = 'Process Complete';
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('planningBtn').disabled = true;
+            }
         }
+        
+
 
         function createResultsChart(iterations) {
             const ctx = document.getElementById('resultsChart').getContext('2d');
@@ -1717,7 +1745,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 120,
+                            max: 120, 
                             title: {
                                 display: true,
                                 text: 'Number of Balls',
@@ -1779,16 +1807,23 @@
         }
 
         function updateSummaryStats(iterations) {
-            const avgPlan = Math.round(iterations.reduce((sum, iter) => sum + iter.plan, 0) / 5);
-            const avgActual = Math.round(iterations.reduce((sum, iter) => sum + iter.actual, 0) / 5);
+            
+            
+            //  Calculate averages based on actual number of completed iterations ***
+            const numIterations = iterations.length;
+            const avgPlan = Math.round(iterations.reduce((sum, iter) => sum + iter.plan, 0) / numIterations);
+            const avgActual = Math.round(iterations.reduce((sum, iter) => sum + iter.actual, 0) / numIterations);
             const totalDefects = iterations.reduce((sum, iter) => sum + iter.defects, 0);
             const deltas = iterations.map(iter => iter.delta);
             const bestDelta = Math.max(...deltas);
             const worstDelta = Math.min(...deltas);
             const totalDelta = deltas.reduce((sum, delta) => sum + delta, 0);
-            const accuracyRate = Math.round((iterations.filter(iter => Math.abs(iter.delta) <= 2).length / 5) * 100);
-            
+            const accuracyRate = Math.round((iterations.filter(iter => Math.abs(iter.delta) <= 2).length / numIterations) * 100);  // Based on completed iterations
+           
+            // *** NEW: Display number of players in results ***
             document.getElementById('numPlayers').textContent = numberOfPlayers;
+            document.getElementById('completedIterations').textContent = iterations.length;  
+
             document.getElementById('avgPlan').textContent = avgPlan;
             document.getElementById('avgActual').textContent = avgActual;
             document.getElementById('totalDefects').textContent = totalDefects;
