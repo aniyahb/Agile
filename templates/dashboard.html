@@ -813,6 +813,87 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        .players-setup-submit:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* *** NEW: Mario Kart Countdown Overlay Styles *** */
+        .countdown-overlay {
+            display: none;  /* *** FIXED: Removed duplicate display property *** */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(50, 50, 50, 0.95));
+            backdrop-filter: blur(10px);
+            z-index: 20000;  /* *** UPDATED: Higher z-index *** */
+        }
+
+        .countdown-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .countdown-number {
+            font-size: 20em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 40px rgba(255, 255, 255, 0.8),
+                         0 0 80px rgba(255, 215, 0, 0.6);
+            font-family: 'Arial Black', sans-serif;
+            animation: countdownPulse 1s ease-out;
+        }
+
+        .countdown-begin {
+            font-size: 12em;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 0 0 40px rgba(76, 175, 80, 0.8),
+                         0 0 80px rgba(76, 175, 80, 0.6);
+            font-family: 'Arial Black', sans-serif;
+            animation: beginPulse 1s ease-out;
+        }
+
+        @keyframes countdownPulse {
+            0% { 
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes beginPulse {
+            0% { 
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -847,6 +928,14 @@
             </button>
         </div>
     </div>
+
+    </div>
+
+    <!-- NEW: Mario Kart Countdown Overlay-->
+    <div id="countdownOverlay" class="countdown-overlay">
+        <div id="countdownDisplay" class="countdown-number">3</div>
+    </div>
+
 
     <div class="container">
         <h1>Agile Game</h1>
@@ -1408,11 +1497,63 @@
                 `Plan Set! Ready to Start Iteration ${currentIteration} <span class="status-indicator status-waiting"></span>`;
         }
 
+        // UPDATED: Show countdown before starting iteration 
         function startIteration() {
             if (isRunning) return;
             
+            console.log('Starting countdown for iteration:', currentIteration);
+            unlockAudio();
+            
+            // Disable start button immediately
+            document.getElementById('startBtn').disabled = true;
+            
+            // Show countdown overlay and play Mario Kart sound
+            showCountdown();
+        }
+
+        // *** NEW: Show Mario Kart countdown ***
+        function showCountdown() {
+            const overlay = document.getElementById('countdownOverlay');
+            const display = document.getElementById('countdownDisplay');
+            
+            // Show overlay
+            overlay.classList.add('active');
+            
+            // Play Mario Kart start sound
+            const marioKartAudio = new Audio('/static/MarioKartStart.mp3');
+            marioKartAudio.play().catch(error => {
+                console.log('Mario Kart audio playback failed:', error);
+            });
+            
+            // Countdown sequence
+            display.textContent = '3';
+            display.className = 'countdown-number';
+            
+            setTimeout(() => {
+                display.textContent = '2';
+                display.className = 'countdown-number';
+            }, 1000);
+            
+            setTimeout(() => {
+                display.textContent = '1';
+                display.className = 'countdown-number';
+            }, 2000);
+            
+            setTimeout(() => {
+                display.textContent = 'BEGIN!';
+                display.className = 'countdown-begin';
+            }, 3000);
+            
+            // Start actual iteration after 4 seconds
+            setTimeout(() => {
+                overlay.classList.remove('active');  // *** UPDATED: Use class instead of inline style ***
+                startIterationActual();
+            }, 4000);
+        }
+
+        // *** NEW: Actual iteration start (after countdown) ***
+        function startIterationActual() {
             console.log('Starting iteration:', currentIteration);
-            unlockAudio();  
 
             // Reset alerts tracking for new iteration
             alertsPlayed.clear();
@@ -1435,9 +1576,6 @@
             .then(response => response.json())
             .then(data => console.log('Backend response:', data))
             .catch(error => console.error('Backend error:', error));
-            
-            // Update UI
-            document.getElementById('startBtn').disabled = true;
             
             // Start timer
             console.log('Starting timer interval');
