@@ -57,8 +57,12 @@ def save_iterations_to_csv():
         "actual",
         "defects",
         "in_progress",
+        "effective_in_progress",  # *** NEW ***
+        "delta_in_process",       # *** NEW ***
         "total",
         "delta",
+        "ipoints",                # *** NEW ***
+        "lmax_points",            # *** NEW ***
         "timestamp",
         "team_players",  
     ]
@@ -166,6 +170,17 @@ def submit_defects():
     total = actual - defects
     delta = total - plan 
 
+    # Calculate results
+    total = actual - defects
+    delta = total - plan 
+    
+    # Calculate scoring with capped and weighted in-progress 
+    effective_in_progress = min(in_progress, 20)      # Cap at 20 balls
+    delta_in_process = effective_in_progress * 0.25   # Multiply by 0.25
+    
+    ipoints = round(delta + delta_in_process)         # Round to whole number 
+    lmax_points = delta + 5                           # Iteration max points (already whole)
+
     # Store iteration data
     iteration_data = {
         "iteration": state["current_iteration"],
@@ -173,10 +188,15 @@ def submit_defects():
         "actual": actual,
         "defects": defects,
         "in_progress": in_progress,
+        "effective_in_progress": effective_in_progress,     
+        "delta_in_process": round(delta_in_process, 2),     # Keep 2 decimals for data
         "total": total,
         "delta": delta,
+        "ipoints": ipoints,                                 # rounded above
+        "lmax_points": lmax_points,                         
         "timestamp": datetime.now().isoformat(),
         "team_players": state["number_of_players"],
+
     }
 
     with state_lock:

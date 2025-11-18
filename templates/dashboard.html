@@ -1193,7 +1193,7 @@
                     <p>Best Delta: <strong id="bestDelta">0</strong></p>
                     <p>Worst Delta: <strong id="worstDelta">0</strong></p>
                     <p>Total Delta: <strong id="totalDelta">0</strong></p>
-                    <p>Accuracy Rate: <strong id="accuracyRate">0%</strong></p>
+                    <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  <!-- Changed from Accuracy Rate -->
                 </div>
             </div>
             
@@ -1813,7 +1813,8 @@
                 updateTableCell(tempCompletedIteration, 4, result.defects); // Defects
                 updateTableCell(tempCompletedIteration, 5, result.total);   // Total
                 updateTableCell(tempCompletedIteration, 6, result.delta >= 0 ? `+${result.delta}` : result.delta, result.delta >= 0 ? 'positive' : 'negative'); // Delta
-                
+                updateTableCell(tempCompletedIteration, 7, result.ipoints, result.ipoints >= 0 ? 'positive' : 'negative'); //  Score column 
+
                 // Mark row as completed
                 document.getElementById(`row-${tempCompletedIteration}`).classList.remove('current-row');
                 document.getElementById(`row-${tempCompletedIteration}`).classList.add('iteration-complete');
@@ -1858,13 +1859,19 @@
                     break; // Stop at first incomplete iteration
                 }
                 
+                // *** UPDATED: Parse delta and ipoints as floats, add lmax_points ***
+                const delta = parseFloat(cells[5].textContent.replace('+', '')) || 0;
+                const ipoints = parseFloat(cells[6].textContent) || 0;  // *** NEW: Read Score column ***
+                
                 iterations.push({
                     iteration: i,
                     plan: parseInt(cells[1].textContent) || 0,
                     actual: parseInt(cells[2].textContent) || 0,
                     defects: parseInt(cells[3].textContent) || 0,
                     total: parseInt(cells[4].textContent) || 0,
-                    delta: parseInt(cells[5].textContent.replace('+', '')) || 0
+                    delta: delta,
+                    ipoints: ipoints,                    // *** NEW ***
+                    lmax_points: delta + 5               // *** NEW: Calculate from delta ***
                 });
             }
             
@@ -1900,7 +1907,6 @@
                 document.getElementById('planningBtn').disabled = true;
             }
         }
-        
 
 
         function createResultsChart(iterations) {
@@ -2037,8 +2043,15 @@
             const worstDelta = Math.min(...deltas);
             const totalDelta = deltas.reduce((sum, delta) => sum + delta, 0);
             const accuracyRate = Math.round((iterations.filter(iter => Math.abs(iter.delta) <= 2).length / numIterations) * 100);  // Based on completed iterations
+
+            
+            // Calculate overall score ***
+            const Gpoints = iterations.reduce((sum, iter) => sum + iter.ipoints, 0);
+            const Gmax_points = iterations.reduce((sum, iter) => sum + iter.lmax_points, 0);  // *** UPDATED: Use stored lmax_points ***
+            const rawScore = Gmax_points !== 0 ? (Gpoints / Gmax_points) * 100 : 0;
+            const overallScore = Math.min(Math.round(rawScore), 100);  // *** NEW: Cap at 100% ***
            
-            // *** NEW: Display number of players in results ***
+            // Display number of players in results
             document.getElementById('numPlayers').textContent = numberOfPlayers;
             document.getElementById('completedIterations').textContent = iterations.length;  
 
@@ -2049,6 +2062,8 @@
             document.getElementById('worstDelta').textContent = worstDelta >= 0 ? `+${worstDelta}` : worstDelta;
             document.getElementById('totalDelta').textContent = totalDelta >= 0 ? `+${totalDelta}` : totalDelta;
             document.getElementById('accuracyRate').textContent = `${accuracyRate}%`;
+
+            document.getElementById('overallScore').textContent = `${overallScore}%`;  
         }
 
         function closeResultsModal() {
@@ -2167,6 +2182,10 @@
                 updateTableCell(data.iteration, 4, data.defects);
                 updateTableCell(data.iteration, 5, data.total);
                 updateTableCell(data.iteration, 6, data.delta >= 0 ? `+${data.delta}` : data.delta, data.delta >= 0 ? 'positive' : 'negative');
+                // Load Score column 
+                if (data.ipoints !== undefined) {
+                    updateTableCell(data.iteration, 7, data.ipoints, data.ipoints >= 0 ? 'positive' : 'negative');
+                }
                 // Also fill in the plan for completed iterations
                 updateTableCell(data.iteration, 2, data.plan);
                 document.getElementById(`row-${data.iteration}`).classList.add('iteration-complete');
