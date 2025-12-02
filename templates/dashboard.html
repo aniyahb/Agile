@@ -939,6 +939,13 @@
 
     <div class="container">
         <h1>Agile Game</h1>
+
+        <!-- Counting Screen Button - Top Right -->
+        <div style="position: fixed; top: 20px; right: 20px; z-index: 100;">
+            <button class="btn" id="countingScreenBtn" onclick="showCountingOverlay()" style="display: none; background: linear-gradient(45deg, #667eea, #764ba2);">
+                Counting Screen
+            </button>
+        </div>
         
         <!-- Control Panel -->
         <div class="control-panel">
@@ -1193,7 +1200,7 @@
                     <p>Best Delta: <strong id="bestDelta">0</strong></p>
                     <p>Worst Delta: <strong id="worstDelta">0</strong></p>
                     <p>Total Delta: <strong id="totalDelta">0</strong></p>
-                    <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  <!-- Changed from Accuracy Rate -->
+        v            <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  <!-- Changed from Accuracy Rate -->
                 </div>
             </div>
             
@@ -1597,6 +1604,13 @@
             document.querySelectorAll('button').forEach(button => {
                 button.addEventListener('click', unlockAudio);
             });
+
+            // Ensure Counting Screen button is hidden & disabled on load
+            const countingBtn = document.getElementById('countingScreenBtn');
+            if (countingBtn) {
+                countingBtn.style.display = 'none';
+                countingBtn.disabled = true;
+            }
             
             // Unlock on any input interaction
             document.querySelectorAll('input').forEach(input => {
@@ -2088,17 +2102,56 @@
             }
         }
 
+        function formatTime(seconds) {
+            if (typeof seconds !== 'number' || seconds < 0) return '0:00';
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
         function showCountingOverlay() {
+            // Always hide the top-right button when opening the overlay
+            const btn = document.getElementById('countingScreenBtn');
+            if (btn) {
+                btn.style.display = 'none';
+                btn.disabled = true;
+            }
+            // Show Overlay 
+            //document.getElementById('countingScreenBtn').style.display = 'none';
             document.getElementById('countingOverlay').style.display = 'block';
             document.getElementById('overlayIteration').textContent = currentIteration;
             document.getElementById('overlayPlan').textContent = planNumber || '-';
-            document.getElementById('overlayBallCount').textContent = '0';
-            document.getElementById('overlayTimer').textContent = '2:00';
-            document.getElementById('overlayProgressBar').style.width = '0%';
+
+            // Sync overlay immediately with current running state (no resets)
+            document.getElementById('overlayBallCount').textContent = (typeof actualCount === 'number' && actualCount >= 0) ? actualCount : '0';
+            document.getElementById('overlayTimer').textContent = formatTime(typeof timeRemaining === 'number' && timeRemaining >= 0 ? timeRemaining : 120);
+
+            const progressPercent = (typeof timeRemaining === 'number' && isRunning)
+                ? ((120 - timeRemaining) / 120) * 100
+                : 0;
+            document.getElementById('overlayProgressBar').style.width = Math.max(0, Math.min(100, progressPercent)) + '%';
+
+            // document.getElementById('overlayBallCount').textContent = '0';
+            // document.getElementById('overlayTimer').textContent = '2:00';
+            // document.getElementById('overlayProgressBar').style.width = '0%';
         }
 
         function hideCountingOverlay() {
             document.getElementById('countingOverlay').style.display = 'none';
+            //document.getElementById('countingScreenBtn').style.display = 'block';
+
+            const btn = document.getElementById('countingScreenBtn');
+            // Only show and enable the button if an iteration is currently running
+            if (btn) {
+                if (isRunning) {
+                    btn.style.display = 'block';
+                    btn.disabled = false;
+                } else {
+                    btn.style.display = 'none';
+                    btn.disabled = true;
+                }
+            }
+
         }
 
         // Close modal when clicking outside (not for planning, defects, in-progress modal - must complete)
