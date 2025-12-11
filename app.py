@@ -7,6 +7,7 @@ import queue
 from datetime import datetime
 import threading
 import csv
+import math 
 
 GPIO_OK = True
 
@@ -30,39 +31,77 @@ except Exception as e:
 SW_PIN = 17
 
 DEBOUNCE = 0.02
-
-# =============================================================
 app = Flask(__name__)
-def save_iterations_to_csv():
-    """Save CSV at iteration 3 and overwrite at iteration 5 using same timestamp"""
-    results_folder = "GAME RESULTS"
+# =============================================================
+def compute_score(balls_collected: int,
+                  goal_target: int,
+                  in_process_balls: int) -> float:
+    """
+    Returns ONLY the final total score.
+    All inputs are ints.
+    """
+    
 
+    # Fixed parameters
+    amp = 20.0
+    mu_factor = 1.0
+    sigma = 4.0
+    baseline = 100.0
+    ndigits = 3
+
+    # ----- Goal scoring -----
+    if balls_collected <= 0:
+        goal_score = 0.0
+    else:
+        exponent = -((balls_collected - mu_factor * goal_target) ** 2) / (2 * (sigma ** 2))
+        mult = amp * math.exp(exponent) + baseline
+        mult = round(mult, ndigits)
+        goal_score = round(balls_collected * mult, ndigits)
+
+    # ----- In-process scoring -----
+    in_proc_total = 0.0
+    for x in range(1, in_process_balls + 1):
+        y = 50 * math.exp(-(x ** 2) / (2 * (20 ** 2)))
+        in_proc_total += y
+
+    in_proc_score = round(in_proc_total, ndigits)
+
+    # ----- Final total -----
+    return round(goal_score + in_proc_score, ndigits)
+app = Flask(__name__)
+
+def save_iterations_to_csv():
+    """
+    Save all iterations_data to a timestamped CSV file is the GAME RESULTS folder.
+    """
+    results_folder = "GAME RESULTS"
     if not os.path.exists(results_folder):
         os.makedirs(results_folder)
+        print(f"Created folder: {results_folder}")
 
-    if state["csv_timestamp"] is None:
-        state["csv_timestamp"] = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    filename = f"results_{state['csv_timestamp']}.csv"
-    full_path = os.path.join(results_folder, filename)
-
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = os.path.join(results_folder, f"results_{ts}.csv")
     fieldnames = [
-
-        "iteration", "plan", "actual", "defects", "in_progress",
-
-        "effective_in_progress", "delta_in_process",
-
-        "total", "delta", "ipoints", "lmax_points",
-
-        "timestamp", "team_players"
+        "iteration",
+        "plan",
+        "actual",
+        "defects",
+        "in_progress",
+        "total",
+        "delta",
+        "ipoints",                # *** NEW ***
+        "timestamp",
+        "team_players",  
     ]
 
-    with open(full_path, "w", newline="") as csvfile:
+    with open(filename, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for row in state["iterations_data"]:
             writer.writerow(row)
-    print(f"CSV saved: {full_path}")
+
+    print(f"Results saved to {filename}")
+    return filename
 
 # ====================== GAME STATE ============================
 
@@ -114,22 +153,25 @@ def set_plan():
 
 @app.route('/start_iteration', methods=['POST'])
 def start_iteration():
+    """Start a 2-minute counting iteration"""
     if state["is_counting"]:
         return jsonify({"error": "Already counting"}), 400
-
+    
+    # Reset Arduino counter
     reset_arduino()
+    
+    # Start counting
     state["is_counting"] = True
     state["ball_count"] = 0
-
-
+      
+    # clear stale updates, then push initial 
     while not updates_q.empty():
-        try:
+        try: 
             updates_q.get_nowait()
-
-        except queue.Empty:
+        except queue.Empty: 
             break
-
     updates_q.put(0)
+    
     return jsonify({"success": True})
 
 @app.route('/stop_iteration', methods=['POST'])
@@ -139,33 +181,40 @@ def stop_iteration():
 
 
 @app.route('/submit_defects', methods=['POST'])
-
 def submit_defects():
+    """Submit defects and calculate results"""
     defects = request.json.get('defects', 0)
     in_progress = request.json.get('in_progress', 0)
     actual = state["ball_count"]
     plan = state["plan_number"]
+
+    # Calculate results
     total = actual - defects
-    delta = total - plan
-    effective_in_progress = min(in_progress, 20)
-    delta_in_process = effective_in_progress * 0.25
-    ipoints = round(delta + delta_in_process)
-    lmax_points = delta + 5
-   
+    delta = total - plan 
+
+    balls_collected = actual
+    goal_target = plan
+    in_process_balls = in_progress
+
+    # Use your scoring function
+    final_score = compute_score(
+        balls_collected,
+        goal_target,
+        in_process_balls
+    )
+    ipoints = final_score
+
     iteration_data = {
         "iteration": state["current_iteration"],
         "plan": plan,
         "actual": actual,
         "defects": defects,
         "in_progress": in_progress,
-        "effective_in_progress": effective_in_progress,
-        "delta_in_process": round(delta_in_process, 2),
         "total": total,
         "delta": delta,
         "ipoints": ipoints,
-        "lmax_points": lmax_points,
         "timestamp": datetime.now().isoformat(),
-        "team_players": state["number_of_players"]
+        "team_players": state["number_of_players"],
     }
 
     with state_lock:
@@ -179,11 +228,10 @@ def submit_defects():
         save_iterations_to_csv()
 
     return jsonify({
-
         "success": True,
         "iteration_data": iteration_data,
         "current_iteration": state["current_iteration"]
-    })
+    })   
 
 
 @app.route('/get_current_count')
@@ -195,16 +243,19 @@ def get_current_count():
 
 def get_final_results():
     return jsonify({
+        "success": True, #maybe remove
         "iterations_data": state["iterations_data"],
         "number_of_players": state["number_of_players"]
     })
 
 @app.route('/live_counter')
 def live_counter():
+    """SSE stream that emits the latest count whenever it changes."""
     @stream_with_context
     def stream():
         yield "event: hello\ndata: connected\n\n"
         while True:
+        # if not counting, send idle pings so the connection stays up
             with state_lock:
                 counting = state["is_counting"]
 
@@ -218,7 +269,6 @@ def live_counter():
 
             except queue.Empty:
                 yield "event: ping\ndata: keep-alive\n\n"
-
     return Response(stream(), mimetype="text/event-stream")
 
 
@@ -258,19 +308,14 @@ def init_gpio_once():
     button.when_pressed = on_press
     print("GPIO17 initialized with debounce=20ms")
 
-
 # ======================= MAIN =================================
-
-
 
 if __name__ == '__main__':
     try:
         init_gpio_once()
     except Exception as e:
         print("GPIO init failed:", e)
-
     print("Starting Agile Game Server...")
-
     print("Access at: http://localhost:5000")
 
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
