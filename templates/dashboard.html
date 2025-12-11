@@ -252,7 +252,36 @@
         .modal-content-large {
             max-width: 900px;
             margin: 5% auto;
-            padding: 30px;
+            padding: 20px;
+            border-radius: 16px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+            box-sizing: border-box;
+
+            /* ensure modal never exceeds viewport and becomes scrollable */
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+
+            /* Reduce chart height inside the modal so footer/buttons remain visible on smaller screens */
+            .modal-content-large .chart-container {
+                height: 320px;
+        }
+
+        /* Responsive tweaks for narrow viewports */
+        @media (max-width: 640px) {
+            .modal-content-large {
+                margin: 2% 10px;
+                padding: 16px;
+                border-radius: 12px;
+            }
+            .modal-content-large .chart-container {
+                height: 240px;
+            }
+            .chart-legend { flex-direction: column; gap: 8px; }
+        }
+        
         }
 
         @keyframes modalSlideIn {
@@ -894,6 +923,77 @@
             }
         }
 
+        /* =============================================================================
+           Last minute FINAL RESULTS MODAL - BALANCED SIZE FIXES
+           Better spacing - fits without scrolling but not too cramped
+           ============================================================================= */
+
+        /* Make the modal use more vertical space */
+        .modal-content-large {
+            max-height: 96vh !important;
+            margin: 2vh auto !important;
+            padding: 18px 25px 18px 25px !important;
+        }
+
+        /* Slightly reduce title size */
+        #resultsModalTitle {
+            font-size: 1.5em !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* Adjust legend size */
+        .chart-legend {
+            margin: 8px 0 10px 0 !important;
+        }
+
+        .legend-item {
+            font-size: 0.9em !important;
+        }
+
+        /* Make chart a bit smaller but not too much */
+        .modal-content-large .chart-container {
+            height: 260px !important;
+            margin: 10px 0 !important;
+        }
+
+        /* Adjust summary section spacing */
+        .results-summary {
+            gap: 15px !important;
+            margin: 12px 0 15px 0 !important;
+        }
+
+        .summary-section h3 {
+            font-size: 1.05em !important;
+            margin-bottom: 8px !important;
+        }
+
+        .summary-section p {
+            font-size: 0.9em !important;
+            margin: 3px 0 !important;
+            line-height: 1.4 !important;
+        }
+
+        /* Adjust button spacing at bottom */
+        .modal-content-large > div:last-child {
+            margin-top: 12px !important;
+        }
+
+        /* Center ONLY the final results modal vertically */
+        #finalResultsModal.modal {
+            display: none !important;
+        }
+        
+        #finalResultsModal.modal[style*="display: block"] {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .modal-content-large {
+            margin: 0 auto !important;
+        }
+
+
     </style>
 </head>
 <body>
@@ -1189,8 +1289,6 @@
                 <div class="summary-section">
                     <h3>Game Summary</h3>
                     <p><strong>Number of Players:</strong> <span id="numPlayers">0</span></p> 
-                    <p>Completed Iterations: <strong id="completedIterations">0</strong></p> 
-                    <p>Total Iterations: <strong>5</strong></p>
                     <p>Average Plan: <strong id="avgPlan">0</strong></p>
                     <p>Average Actual: <strong id="avgActual">0</strong></p>
                     <p>Total Defects: <strong id="totalDefects">0</strong></p>
@@ -1200,7 +1298,7 @@
                     <p>Best Delta: <strong id="bestDelta">0</strong></p>
                     <p>Worst Delta: <strong id="worstDelta">0</strong></p>
                     <p>Total Delta: <strong id="totalDelta">0</strong></p>
-        v            <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  <!-- Changed from Accuracy Rate -->
+                    <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  <!-- Changed from Accuracy Rate -->
                 </div>
             </div>
             
