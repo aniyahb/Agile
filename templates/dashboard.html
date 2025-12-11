@@ -1375,6 +1375,8 @@
                 console.log('Players set:', data);
                 // Hide the overlay and show the dashboard
                 document.getElementById('playersSetupOverlay').style.display = 'none';
+
+                window.scrollTo(0, 0);
             })
             .catch(error => {
                 console.error('Error setting players:', error);
