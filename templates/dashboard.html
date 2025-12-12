@@ -1285,7 +1285,7 @@
                 <canvas id="resultsChart"></canvas>
             </div>
             
-            <div class="results-summary">
+            <!-- <div class="results-summary">
                 <div class="summary-section">
                     <h3>Game Summary</h3>
                     <p><strong>Number of Players:</strong> <span id="numPlayers">0</span></p> 
@@ -1298,9 +1298,9 @@
                     <p>Best Delta: <strong id="bestDelta">0</strong></p>
                     <p>Worst Delta: <strong id="worstDelta">0</strong></p>
                     <p>Total Delta: <strong id="totalDelta">0</strong></p>
-                    <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  <!-- Changed from Accuracy Rate -->
+                    <p><strong>Accuracy Rate:</strong> <strong id="accuracyRate">0%</strong></p>  
                 </div>
-            </div>
+            </div> -->
             
             <div style="text-align: center; margin-top: 15px;">
                 <button class="btn" onclick="closeResultsModal()">Close Results</button>
@@ -2145,8 +2145,8 @@
         }
 
         function updateSummaryStats(iterations) {
-            
-            
+        
+
             //  Calculate averages based on actual number of completed iterations ***
             const numIterations = iterations.length;
             const avgPlan = Math.round(iterations.reduce((sum, iter) => sum + iter.plan, 0) / numIterations);
